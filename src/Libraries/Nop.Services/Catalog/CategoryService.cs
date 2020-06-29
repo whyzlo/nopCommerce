@@ -755,12 +755,13 @@ namespace Nop.Services.Catalog
         {
             if (categoryIds == null || categoryIds.Length == 0)
                 return new List<Category>();
-
-            var query = from p in _categoryRepository.Table
-                        where categoryIds.Contains(p.Id) && !p.Deleted
-                        select p;
-
-            return query.ToList();
+            
+            return (from categoryId in categoryIds
+                    let query = from p in _categoryRepository.Table
+                                where p.Id == categoryId && !p.Deleted
+                                select p
+                    where query.Any()
+                    select query.First()).ToList();
         }
 
         /// <summary>

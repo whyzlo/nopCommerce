@@ -252,12 +252,13 @@ namespace Nop.Services.Catalog
         {
             if (manufacturerIds == null || manufacturerIds.Length == 0)
                 return new List<Manufacturer>();
-
-            var query = from p in _manufacturerRepository.Table
-                        where manufacturerIds.Contains(p.Id) && !p.Deleted
-                        select p;
-
-            return query.ToList();
+            
+            return (from manufacturerId in manufacturerIds
+                    let query = from p in _manufacturerRepository.Table
+                                where p.Id == manufacturerId && !p.Deleted
+                                select p
+                    where query.Any()
+                    select query.First()).ToList();
         }
 
         /// <summary>

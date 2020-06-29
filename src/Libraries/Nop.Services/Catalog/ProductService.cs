@@ -388,24 +388,12 @@ namespace Nop.Services.Catalog
             if (productIds == null || productIds.Length == 0)
                 return new List<Product>();
 
-            var key = _cacheKeyService.PrepareKeyForDefaultCache(NopCatalogDefaults.ProductsByIdsCacheKey, productIds);
-
-            var query = from p in _productRepository.Table
-                        where productIds.Contains(p.Id) && !p.Deleted
-                        select p;
-
-            var products = query.ToCachedList(key);
-
-            //sort by passed identifiers
-            var sortedProducts = new List<Product>();
-            foreach (var id in productIds)
-            {
-                var product = products.FirstOrDefault(x => x.Id == id);
-                if (product != null)
-                    sortedProducts.Add(product);
-            }
-
-            return sortedProducts;
+            return (from productId in productIds
+                    let query = from p in _productRepository.Table
+                                where p.Id == productId && !p.Deleted
+                                select p
+                    where query.Any()
+                    select query.First()).ToList();
         }
 
         /// <summary>
@@ -2301,20 +2289,12 @@ namespace Nop.Services.Catalog
             if (productReviewIds == null || productReviewIds.Length == 0)
                 return new List<ProductReview>();
 
-            var query = from pr in _productReviewRepository.Table
-                        where productReviewIds.Contains(pr.Id)
-                        select pr;
-            var productReviews = query.ToList();
-            //sort by passed identifiers
-            var sortedProductReviews = new List<ProductReview>();
-            foreach (var id in productReviewIds)
-            {
-                var productReview = productReviews.Find(x => x.Id == id);
-                if (productReview != null)
-                    sortedProductReviews.Add(productReview);
-            }
-
-            return sortedProductReviews;
+            return (from productReviewId in productReviewIds
+                    let query = from pr in _productReviewRepository.Table
+                                where pr.Id == productReviewId
+                                select pr
+                    where query.Any()
+                    select query.First()).ToList();
         }
 
         /// <summary>

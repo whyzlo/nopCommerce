@@ -120,20 +120,12 @@ namespace Nop.Services.Messages
             if (queuedEmailIds == null || queuedEmailIds.Length == 0)
                 return new List<QueuedEmail>();
 
-            var query = from qe in _queuedEmailRepository.Table
-                        where queuedEmailIds.Contains(qe.Id)
-                        select qe;
-            var queuedEmails = query.ToList();
-            //sort by passed identifiers
-            var sortedQueuedEmails = new List<QueuedEmail>();
-            foreach (var id in queuedEmailIds)
-            {
-                var queuedEmail = queuedEmails.Find(x => x.Id == id);
-                if (queuedEmail != null)
-                    sortedQueuedEmails.Add(queuedEmail);
-            }
-
-            return sortedQueuedEmails;
+            return (from queuedEmailId in queuedEmailIds
+                    let query = from qe in _queuedEmailRepository.Table
+                                where qe.Id == queuedEmailId
+                                select qe
+                    where query.Any()
+                    select query.First()).ToList();
         }
 
         /// <summary>

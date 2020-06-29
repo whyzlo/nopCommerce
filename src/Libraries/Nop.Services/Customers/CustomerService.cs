@@ -391,21 +391,13 @@ namespace Nop.Services.Customers
         {
             if (customerIds == null || customerIds.Length == 0)
                 return new List<Customer>();
-
-            var query = from c in _customerRepository.Table
-                        where customerIds.Contains(c.Id) && !c.Deleted
-                        select c;
-            var customers = query.ToList();
-            //sort by passed identifiers
-            var sortedCustomers = new List<Customer>();
-            foreach (var id in customerIds)
-            {
-                var customer = customers.Find(x => x.Id == id);
-                if (customer != null)
-                    sortedCustomers.Add(customer);
-            }
-
-            return sortedCustomers;
+            
+            return (from customerId in customerIds
+                    let query = from c in _customerRepository.Table
+                                where c.Id == customerId && !c.Deleted
+                                select c
+                    where query.Any()
+                    select query.First()).ToList();
         }
 
         /// <summary>

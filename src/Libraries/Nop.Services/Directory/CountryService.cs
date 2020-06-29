@@ -174,20 +174,12 @@ namespace Nop.Services.Directory
             if (countryIds == null || countryIds.Length == 0)
                 return new List<Country>();
 
-            var query = from c in _countryRepository.Table
-                        where countryIds.Contains(c.Id)
-                        select c;
-            var countries = query.ToList();
-            //sort by passed identifiers
-            var sortedCountries = new List<Country>();
-            foreach (var id in countryIds)
-            {
-                var country = countries.Find(x => x.Id == id);
-                if (country != null)
-                    sortedCountries.Add(country);
-            }
-
-            return sortedCountries;
+            return (from countryId in countryIds
+                    let query = from c in _countryRepository.Table
+                                where c.Id == countryId
+                                select c
+                    where query.Any()
+                    select query.First()).ToList();
         }
 
         /// <summary>

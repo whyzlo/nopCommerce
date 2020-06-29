@@ -171,13 +171,11 @@ namespace Nop.Data
         public void BulkDeleteEntities<TEntity>(IList<TEntity> entities) where TEntity : BaseEntity
         {
             using var dataContext = CreateDataConnection();
-            if (entities.All(entity => entity.Id == 0))
-                foreach (var entity in entities)
-                    dataContext.Delete(entity);
-            else
-                dataContext.GetTable<TEntity>()
-                    .Where(e => e.Id.In(entities.Select(x => x.Id)))
-                    .Delete();
+            for (var i = 0; i < entities.Count; i++)
+            {
+                var entity = entities[i];
+                dataContext.Delete(entity);
+            }
         }
 
         /// <summary>

@@ -205,20 +205,12 @@ namespace Nop.Services.Shipping
             if (shipmentIds == null || shipmentIds.Length == 0)
                 return new List<Shipment>();
 
-            var query = from o in _shipmentRepository.Table
-                        where shipmentIds.Contains(o.Id)
-                        select o;
-            var shipments = query.ToList();
-            //sort by passed identifiers
-            var sortedOrders = new List<Shipment>();
-            foreach (var id in shipmentIds)
-            {
-                var shipment = shipments.Find(x => x.Id == id);
-                if (shipment != null)
-                    sortedOrders.Add(shipment);
-            }
-
-            return sortedOrders;
+            return (from shipmentId in shipmentIds
+                    let query = from o in _shipmentRepository.Table
+                                where o.Id == shipmentId
+                                select o
+                    where query.Any()
+                    select query.First()).ToList();
         }
 
         /// <summary>

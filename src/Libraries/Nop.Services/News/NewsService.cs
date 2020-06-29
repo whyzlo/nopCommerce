@@ -256,20 +256,12 @@ namespace Nop.Services.News
             if (commentIds == null || commentIds.Length == 0)
                 return new List<NewsComment>();
 
-            var query = from nc in _newsCommentRepository.Table
-                        where commentIds.Contains(nc.Id)
-                        select nc;
-            var comments = query.ToList();
-            //sort by passed identifiers
-            var sortedComments = new List<NewsComment>();
-            foreach (var id in commentIds)
-            {
-                var comment = comments.Find(x => x.Id == id);
-                if (comment != null)
-                    sortedComments.Add(comment);
-            }
-
-            return sortedComments;
+            return (from commentId in commentIds
+                    let query = from nc in _newsCommentRepository.Table
+                                where nc.Id == commentId
+                                select nc
+                    where query.Any()
+                    select query.First()).ToList();
         }
 
         /// <summary>

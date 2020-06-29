@@ -130,20 +130,12 @@ namespace Nop.Services.Orders
             if (orderIds == null || orderIds.Length == 0)
                 return new List<Order>();
 
-            var query = from o in _orderRepository.Table
-                        where orderIds.Contains(o.Id) && !o.Deleted
-                        select o;
-            var orders = query.ToList();
-            //sort by passed identifiers
-            var sortedOrders = new List<Order>();
-            foreach (var id in orderIds)
-            {
-                var order = orders.Find(x => x.Id == id);
-                if (order != null)
-                    sortedOrders.Add(order);
-            }
-
-            return sortedOrders;
+            return (from orderId in orderIds
+                    let query = from o in _orderRepository.Table
+                                where o.Id == orderId && !o.Deleted
+                                select o
+                    where query.Any()
+                    select query.First()).ToList();
         }
 
         /// <summary>

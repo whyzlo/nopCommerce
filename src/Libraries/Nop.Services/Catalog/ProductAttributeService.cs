@@ -123,11 +123,12 @@ namespace Nop.Services.Catalog
             if (productAttributeIds == null || productAttributeIds.Length == 0)
                 return new List<ProductAttribute>();
 
-            var query = from p in _productAttributeRepository.Table
-                        where productAttributeIds.Contains(p.Id)
-                        select p;
-
-            return query.ToList();
+            return (from productAttributeId in productAttributeIds
+                    let query = from p in _productAttributeRepository.Table
+                                where p.Id == productAttributeId
+                                select p
+                    where query.Any()
+                    select query.First()).ToList();
         }
 
         /// <summary>
