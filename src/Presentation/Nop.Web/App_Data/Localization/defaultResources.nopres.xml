@@ -14466,6 +14466,9 @@
   <LocaleResource Name="Admin.System.Warnings.PluginNotEnabled">
     <Value>Uninstall and delete the plugin(s) that you don't use</Value>
   </LocaleResource>
+  <LocaleResource Name="Admin.System.Warnings.PluginNotEnabled.AutoFixAndRestart">
+    <Value>Auto fix and restart the site</Value>
+  </LocaleResource>
   <LocaleResource Name="Admin.System.Warnings.PluginNotLoaded">
     <Value>'{0}' plugin is not compatible or cannot be loaded.</Value>
   </LocaleResource>
