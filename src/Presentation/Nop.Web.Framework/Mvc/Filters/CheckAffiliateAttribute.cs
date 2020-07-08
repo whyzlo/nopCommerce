@@ -111,7 +111,7 @@ namespace Nop.Web.Framework.Mvc.Filters
                 if (affiliateIds.Any() && int.TryParse(affiliateIds.FirstOrDefault(), out int affiliateId)
                     && affiliateId > 0 && affiliateId != _workContext.CurrentCustomer.AffiliateId)
                 {
-                    SetCustomerAffiliateId(_affiliateService.GetAffiliateById(affiliateId));
+                    SetCustomerAffiliateId(_affiliateService.GetById(affiliateId));
                     return;
                 }
 

@@ -11119,7 +11119,8 @@ namespace Nop.Services.Installation
             if (defaultLanguage == null)
                 throw new Exception("Default language could not be loaded");
 
-            var blogService = EngineContext.Current.Resolve<IBlogService>();
+            var blogPostsService = EngineContext.Current.Resolve<IBlogPostsService>();
+            var blogCommentsService = EngineContext.Current.Resolve<IBlogCommentsService>();
 
             var blogPosts = new List<BlogPost>
             {
@@ -11172,7 +11173,7 @@ namespace Nop.Services.Installation
 
             foreach (var blogPost in blogPosts)
             {
-                blogService.InsertBlogComment(new BlogComment
+                blogCommentsService.Insert(new BlogComment
                 {
                     BlogPostId = blogPost.Id,
                     CustomerId = defaultCustomer.Id,

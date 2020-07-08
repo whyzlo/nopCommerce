@@ -6,7 +6,6 @@ using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Seo;
 using Nop.Data;
-using Nop.Services.Caching.Extensions;
 using Nop.Services.Common;
 using Nop.Services.Events;
 using Nop.Services.Seo;
@@ -16,14 +15,12 @@ namespace Nop.Services.Affiliates
     /// <summary>
     /// Affiliate service
     /// </summary>
-    public partial class AffiliateService : IAffiliateService
+    public partial class AffiliateService : CrudService<Affiliate>, IAffiliateService
     {
         #region Fields
 
         private readonly IAddressService _addressService;
-        private readonly IEventPublisher _eventPublisher;
         private readonly IRepository<Address> _addressRepository;
-        private readonly IRepository<Affiliate> _affiliateRepository;
         private readonly IRepository<Order> _orderRepository;
         private readonly IUrlRecordService _urlRecordService;
         private readonly IWebHelper _webHelper;
@@ -34,18 +31,14 @@ namespace Nop.Services.Affiliates
         #region Ctor
 
         public AffiliateService(IAddressService addressService,
-            IEventPublisher eventPublisher,
             IRepository<Address> addressRepository,
-            IRepository<Affiliate> affiliateRepository,
             IRepository<Order> orderRepository,
             IUrlRecordService urlRecordService,
             IWebHelper webHelper,
             SeoSettings seoSettings)
         {
             _addressService = addressService;
-            _eventPublisher = eventPublisher;
             _addressRepository = addressRepository;
-            _affiliateRepository = affiliateRepository;
             _orderRepository = orderRepository;
             _urlRecordService = urlRecordService;
             _webHelper = webHelper;
@@ -57,19 +50,6 @@ namespace Nop.Services.Affiliates
         #region Methods
 
         /// <summary>
-        /// Gets an affiliate by affiliate identifier
-        /// </summary>
-        /// <param name="affiliateId">Affiliate identifier</param>
-        /// <returns>Affiliate</returns>
-        public virtual Affiliate GetAffiliateById(int affiliateId)
-        {
-            if (affiliateId == 0)
-                return null;
-
-            return _affiliateRepository.ToCachedGetById(affiliateId);
-        }
-
-        /// <summary>
         /// Gets an affiliate by friendly URL name
         /// </summary>
         /// <param name="friendlyUrlName">Friendly URL name</param>
@@ -79,7 +59,7 @@ namespace Nop.Services.Affiliates
             if (string.IsNullOrWhiteSpace(friendlyUrlName))
                 return null;
 
-            var query = from a in _affiliateRepository.Table
+            var query = from a in _repository.Table
                         orderby a.Id
                         where a.FriendlyUrlName == friendlyUrlName
                         select a;
@@ -91,13 +71,13 @@ namespace Nop.Services.Affiliates
         /// Marks affiliate as deleted 
         /// </summary>
         /// <param name="affiliate">Affiliate</param>
-        public virtual void DeleteAffiliate(Affiliate affiliate)
+        public override void Delete(Affiliate affiliate)
         {
             if (affiliate == null)
                 throw new ArgumentNullException(nameof(affiliate));
 
             affiliate.Deleted = true;
-            UpdateAffiliate(affiliate);
+            Update(affiliate);
 
             //event notification
             _eventPublisher.EntityDeleted(affiliate);
@@ -123,7 +103,7 @@ namespace Nop.Services.Affiliates
             int pageIndex = 0, int pageSize = int.MaxValue,
             bool showHidden = false)
         {
-            var query = _affiliateRepository.Table;
+            var query = _repository.Table;
 
             if (!string.IsNullOrWhiteSpace(friendlyUrlName))
                 query = query.Where(a => a.FriendlyUrlName.Contains(friendlyUrlName));
@@ -163,36 +143,6 @@ namespace Nop.Services.Affiliates
             var affiliates = new PagedList<Affiliate>(query, pageIndex, pageSize);
 
             return affiliates;
-        }
-
-        /// <summary>
-        /// Inserts an affiliate
-        /// </summary>
-        /// <param name="affiliate">Affiliate</param>
-        public virtual void InsertAffiliate(Affiliate affiliate)
-        {
-            if (affiliate == null)
-                throw new ArgumentNullException(nameof(affiliate));
-
-            _affiliateRepository.Insert(affiliate);
-
-            //event notification
-            _eventPublisher.EntityInserted(affiliate);
-        }
-
-        /// <summary>
-        /// Updates the affiliate
-        /// </summary>
-        /// <param name="affiliate">Affiliate</param>
-        public virtual void UpdateAffiliate(Affiliate affiliate)
-        {
-            if (affiliate == null)
-                throw new ArgumentNullException(nameof(affiliate));
-
-            _affiliateRepository.Update(affiliate);
-
-            //event notification
-            _eventPublisher.EntityUpdated(affiliate);
         }
 
         /// <summary>

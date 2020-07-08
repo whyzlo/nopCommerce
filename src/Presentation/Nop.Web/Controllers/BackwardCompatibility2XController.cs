@@ -14,7 +14,7 @@ namespace Nop.Web.Controllers
     {
         #region Fields
 
-        private readonly IBlogService _blogService;
+        private readonly IBlogPostsService _blogPostsService;
         private readonly ICategoryService _categoryService;
         private readonly IManufacturerService _manufacturerService;
         private readonly INewsService _newsService;
@@ -28,7 +28,7 @@ namespace Nop.Web.Controllers
 
         #region Ctor
 
-        public BackwardCompatibility2XController(IBlogService blogService,
+        public BackwardCompatibility2XController(IBlogPostsService blogPostsService,
             ICategoryService categoryService,
             IManufacturerService manufacturerService,
             INewsService newsService,
@@ -38,7 +38,7 @@ namespace Nop.Web.Controllers
             IUrlRecordService urlRecordService,
             IVendorService vendorService)
         {
-            _blogService = blogService;
+            _blogPostsService = blogPostsService;
             _categoryService = categoryService;
             _manufacturerService = manufacturerService;
             _newsService = newsService;
@@ -96,7 +96,7 @@ namespace Nop.Web.Controllers
         //in versions 2.00-2.70 we had ID in blog URLs
         public virtual IActionResult RedirectBlogPostById(int blogPostId)
         {
-            var blogPost = _blogService.GetBlogPostById(blogPostId);
+            var blogPost = _blogPostsService.GetById(blogPostId);
             if (blogPost == null)
                 return RedirectToRoutePermanent("Homepage");
 

@@ -731,7 +731,7 @@ namespace Nop.Web.Areas.Admin.Factories
                         _storeService.GetAllStores().Select(x => x.Id).Count() > 1;
                    
                     //prepare model affiliate
-                    var affiliate = _affiliateService.GetAffiliateById(customer.AffiliateId);
+                    var affiliate = _affiliateService.GetById(customer.AffiliateId);
                     if (affiliate != null)
                     {
                         model.AffiliateId = affiliate.Id;

@@ -405,7 +405,7 @@ namespace Nop.Services.Orders
                 throw new ArgumentException("Customer is not set");
 
             //affiliate
-            var affiliate = _affiliateService.GetAffiliateById(details.Customer.AffiliateId);
+            var affiliate = _affiliateService.GetById(details.Customer.AffiliateId);
             if (affiliate != null && affiliate.Active && !affiliate.Deleted)
                 details.AffiliateId = affiliate.Id;
 
@@ -647,7 +647,7 @@ namespace Nop.Services.Orders
                 throw new ArgumentException("Customer is not set");
 
             //affiliate
-            var affiliate = _affiliateService.GetAffiliateById(details.Customer.AffiliateId);
+            var affiliate = _affiliateService.GetById(details.Customer.AffiliateId);
             if (affiliate != null && affiliate.Active && !affiliate.Deleted)
                 details.AffiliateId = affiliate.Id;
 
