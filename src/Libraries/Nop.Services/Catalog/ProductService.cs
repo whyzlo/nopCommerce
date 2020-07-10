@@ -1558,17 +1558,20 @@ namespace Nop.Services.Catalog
             if (product == null)
                 throw new ArgumentNullException(nameof(product));
 
+            if (quantity < 0)
+                throw new ArgumentException("Value must be positive.", nameof(quantity));
+
+            if (quantity == 0)
+                return;
+
             //Warehouse to which reserve is being transferred
             var productInventory = _productWarehouseInventoryRepository.Table
-                .Where(pwi => pwi.ProductId == product.Id && pwi.WarehouseId == warehouseId)
-                .ToList()
-                .FirstOrDefault();
+                .FirstOrDefault(pwi => pwi.ProductId == product.Id && pwi.WarehouseId == warehouseId);
 
             if (productInventory == null)
                 return;
 
-            var selectQty = Math.Min(productInventory.StockQuantity - productInventory.ReservedQuantity, quantity);
-            productInventory.ReservedQuantity += selectQty;
+            productInventory.ReservedQuantity += quantity;
 
             UpdateProductWarehouseInventory(productInventory);
 
@@ -1578,7 +1581,7 @@ namespace Nop.Services.Catalog
                 .OrderByDescending(ob => ob.ReservedQuantity)
                 .ToList();
 
-            var qty = selectQty;
+            var qty = quantity;
             //We need to make a balance in all warehouses, as resources of one warehouse may not be enough
             foreach (var productAnotherInventory in productAnotherInventories)
             {
@@ -1591,7 +1594,7 @@ namespace Nop.Services.Catalog
                     else
                     {
                         //Here we can transfer only a part of the reserve, the rest will be sought in other warehouses.
-                        qty = selectQty - productAnotherInventory.ReservedQuantity;
+                        qty -= productAnotherInventory.ReservedQuantity;
                         productAnotherInventory.ReservedQuantity = 0;
                     }
                 }

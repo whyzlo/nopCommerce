@@ -2067,9 +2067,9 @@ namespace Nop.Web.Areas.Admin.Controllers
                 //currently reserved in current stock
                 var quantityReserved = quantityTotal - quantityWithReserved;
 
-                //If the quantity of the reserve product in the warehouse does not coincide with the total quantity of goods in the basket, 
-                //it is necessary to redistribute the reserve to the warehouse
-                if (!(quantityReserved == qtyToAdd && quantityReserved == maxQtyToAdd))
+                //If the quantity of the reserve product in the warehouse is less than the total quantity which can be added to shipment,
+                //then to redistribute the reserve to the warehouse from another warehouses
+                if (quantityReserved < qtyToAdd)
                     _productService.BalanceInventory(product, warehouseId, qtyToAdd);
             }
 
