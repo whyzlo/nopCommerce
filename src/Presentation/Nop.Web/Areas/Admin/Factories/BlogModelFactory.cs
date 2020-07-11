@@ -30,8 +30,8 @@ namespace Nop.Web.Areas.Admin.Factories
 
         private readonly CatalogSettings _catalogSettings;
         private readonly IBaseAdminModelFactory _baseAdminModelFactory;
-        private readonly IBlogCommentsService _blogCommentsService;
-        private readonly IBlogPostsService _blogPostsService;
+        private readonly IBlogCommentService _blogCommentService;
+        private readonly IBlogPostService _blogPostService;
         private readonly ICustomerService _customerService;
         private readonly IDateTimeHelper _dateTimeHelper;
         private readonly ILanguageService _languageService;
@@ -46,8 +46,8 @@ namespace Nop.Web.Areas.Admin.Factories
 
         public BlogModelFactory(CatalogSettings catalogSettings,
             IBaseAdminModelFactory baseAdminModelFactory,
-            IBlogCommentsService blogCommentsService,
-            IBlogPostsService blogPostsService,
+            IBlogCommentService blogCommentService,
+            IBlogPostService blogPostService,
             ICustomerService customerService,
             IDateTimeHelper dateTimeHelper,
             ILanguageService languageService,
@@ -58,8 +58,8 @@ namespace Nop.Web.Areas.Admin.Factories
         {
             _catalogSettings = catalogSettings;
             _baseAdminModelFactory = baseAdminModelFactory;
-            _blogCommentsService = blogCommentsService;
-            _blogPostsService = blogPostsService;
+            _blogCommentService = blogCommentService;
+            _blogPostService = blogPostService;
             _customerService = customerService;
             _dateTimeHelper = dateTimeHelper;
             _languageService = languageService;
@@ -86,7 +86,7 @@ namespace Nop.Web.Areas.Admin.Factories
 
             //prepare nested search models
             PrepareBlogPostSearchModel(blogContentModel.BlogPosts);
-            var blogPost = _blogPostsService.GetById(filterByBlogPostId ?? 0);
+            var blogPost = _blogPostService.GetById(filterByBlogPostId ?? 0);
             PrepareBlogCommentSearchModel(blogContentModel.BlogComments, blogPost);
 
             return blogContentModel;
@@ -124,7 +124,7 @@ namespace Nop.Web.Areas.Admin.Factories
                 throw new ArgumentNullException(nameof(searchModel));
 
             //get blog posts
-            var blogPosts = _blogPostsService.GetAllBlogPosts(storeId: searchModel.SearchStoreId, showHidden: true,
+            var blogPosts = _blogPostService.GetAllBlogPosts(storeId: searchModel.SearchStoreId, showHidden: true,
                 pageIndex: searchModel.Page - 1, pageSize: searchModel.PageSize, title : searchModel.SearchTitle);
 
             //prepare list model
@@ -147,8 +147,8 @@ namespace Nop.Web.Areas.Admin.Factories
 
                     //fill in additional values (not existing in the entity)
                     blogPostModel.LanguageName = _languageService.GetLanguageById(blogPost.LanguageId)?.Name;
-                    blogPostModel.ApprovedComments = _blogCommentsService.GetBlogCommentsCount(blogPost, isApproved: true);
-                    blogPostModel.NotApprovedComments = _blogCommentsService.GetBlogCommentsCount(blogPost, isApproved: false);
+                    blogPostModel.ApprovedComments = _blogCommentService.GetBlogCommentsCount(blogPost, isApproved: true);
+                    blogPostModel.NotApprovedComments = _blogCommentService.GetBlogCommentsCount(blogPost, isApproved: false);
                     blogPostModel.SeName = _urlRecordService.GetSeName(blogPost, blogPost.LanguageId, true, false);
 
                     return blogPostModel;
@@ -186,7 +186,7 @@ namespace Nop.Web.Areas.Admin.Factories
                 model.IncludeInSitemap = true;
             }
 
-            var blogTags = _blogPostsService.GetAllBlogPostTags(0, 0, true);
+            var blogTags = _blogPostService.GetAllBlogPostTags(0, 0, true);
             var blogTagsSb = new StringBuilder();
             blogTagsSb.Append("var initialBlogTags = [");
             for (var i = 0; i < blogTags.Count; i++)
@@ -266,7 +266,7 @@ namespace Nop.Web.Areas.Admin.Factories
             var isApprovedOnly = searchModel.SearchApprovedId == 0 ? null : searchModel.SearchApprovedId == 1 ? true : (bool?)false;
 
             //get comments
-            var comments = _blogCommentsService.GetAllComments(blogPostId: blogPostId,
+            var comments = _blogCommentService.GetAllComments(blogPostId: blogPostId,
                 approved: isApprovedOnly,
                 fromUtc: createdOnFromValue,
                 toUtc: createdOnToValue,
@@ -284,7 +284,7 @@ namespace Nop.Web.Areas.Admin.Factories
                     var commentModel = blogComment.ToModel<BlogCommentModel>();
                     
                     //set title from linked blog post
-                    commentModel.BlogPostTitle = _blogPostsService.GetById(blogComment.BlogPostId)?.Title;
+                    commentModel.BlogPostTitle = _blogPostService.GetById(blogComment.BlogPostId)?.Title;
 
                     if (_customerService.GetCustomerById(blogComment.CustomerId) is Customer customer)
                         commentModel.CustomerInfo = _customerService.IsRegistered(customer) ? customer.Email : _localizationService.GetResource("Admin.Customers.Guest");

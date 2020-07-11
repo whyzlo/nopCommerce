@@ -5,9 +5,9 @@ using Nop.Core.Domain.Blogs;
 namespace Nop.Services.Blogs
 {
     /// <summary>
-    /// Blog comments service interface
+    /// Represents a blog comment service
     /// </summary>
-    public partial interface IBlogCommentsService : ICrudService<BlogComment>
+    public partial interface IBlogCommentService : IService<BlogComment>
     {
         /// <summary>
         /// Gets all comments

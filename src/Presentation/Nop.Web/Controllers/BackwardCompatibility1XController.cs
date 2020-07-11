@@ -18,7 +18,7 @@ namespace Nop.Web.Controllers
     {
         #region Fields
 
-        private readonly IBlogPostsService _blogPostsService;
+        private readonly IBlogPostService _blogPostService;
         private readonly ICategoryService _categoryService;
         private readonly ICustomerService _customerService;
         private readonly IForumService _forumService;
@@ -34,7 +34,7 @@ namespace Nop.Web.Controllers
 
         #region Ctor
 
-        public BackwardCompatibility1XController(IBlogPostsService blogPostsService,
+        public BackwardCompatibility1XController(IBlogPostService blogPostService,
             ICategoryService categoryService,
             ICustomerService customerService,
             IForumService forumService,
@@ -46,7 +46,7 @@ namespace Nop.Web.Controllers
             IUrlRecordService urlRecordService,
             IWebHelper webHelper)
         {
-            _blogPostsService = blogPostsService;
+            _blogPostService = blogPostService;
             _categoryService = categoryService;
             _customerService = customerService;
             _forumService = forumService;
@@ -221,7 +221,7 @@ namespace Nop.Web.Controllers
         {
             //we can't use dash in MVC
             var blogPostId = idIncludesSename ? Convert.ToInt32(id.Split(new[] { '-' })[0]) : Convert.ToInt32(id);
-            var blogPost = _blogPostsService.GetById(blogPostId);
+            var blogPost = _blogPostService.GetById(blogPostId);
             if (blogPost == null)
                 return RedirectToRoutePermanent("Homepage");
 

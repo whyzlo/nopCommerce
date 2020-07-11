@@ -8,13 +8,14 @@ using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Stores;
 using Nop.Data;
 using Nop.Services.Caching;
+using Nop.Services.Events;
 
 namespace Nop.Services.Blogs
 {
     /// <summary>
-    /// Blog service
+    /// Represents the blog post service implementation
     /// </summary>
-    public partial class BlogPostsService : CrudService<BlogPost>, IBlogPostsService
+    public partial class BlogPostService : Service<BlogPost>, IBlogPostService
     {
         #region Fields
 
@@ -23,16 +24,17 @@ namespace Nop.Services.Blogs
         private readonly IRepository<BlogPost> _blogPostRepository;
         private readonly IRepository<StoreMapping> _storeMappingRepository;
         private readonly IStaticCacheManager _staticCacheManager;
-        
+
         #endregion
 
         #region Ctor
 
-        public BlogPostsService(CatalogSettings catalogSettings,
+        public BlogPostService(CatalogSettings catalogSettings,
             ICacheKeyService cacheKeyService,
+            IEventPublisher eventPublisher,
             IRepository<BlogPost> blogPostRepository,
             IRepository<StoreMapping> storeMappingRepository,
-            IStaticCacheManager staticCacheManager)
+            IStaticCacheManager staticCacheManager) : base(eventPublisher, blogPostRepository, staticCacheManager)
         {
             _catalogSettings = catalogSettings;
             _cacheKeyService = cacheKeyService;
@@ -44,7 +46,7 @@ namespace Nop.Services.Blogs
         #endregion
 
         #region Methods
-        
+
         /// <summary>
         /// Gets all blog posts
         /// </summary>
@@ -61,39 +63,39 @@ namespace Nop.Services.Blogs
             DateTime? dateFrom = null, DateTime? dateTo = null,
             int pageIndex = 0, int pageSize = int.MaxValue, bool showHidden = false, string title = null)
         {
-            var query = _blogPostRepository.Table;
-            if (dateFrom.HasValue)
-                query = query.Where(b => dateFrom.Value <= (b.StartDateUtc ?? b.CreatedOnUtc));
-            if (dateTo.HasValue)
-                query = query.Where(b => dateTo.Value >= (b.StartDateUtc ?? b.CreatedOnUtc));
-            if (languageId > 0)
-                query = query.Where(b => languageId == b.LanguageId);
-            if (!string.IsNullOrEmpty(title))
-                query = query.Where(b => b.Title.Contains(title));
-            if (!showHidden)
+            return GetAllPaged(query =>
             {
-                query = query.Where(b => !b.StartDateUtc.HasValue || b.StartDateUtc <= DateTime.UtcNow);
-                query = query.Where(b => !b.EndDateUtc.HasValue || b.EndDateUtc >= DateTime.UtcNow);
-            }
+                if (dateFrom.HasValue)
+                    query = query.Where(b => dateFrom.Value <= (b.StartDateUtc ?? b.CreatedOnUtc));
+                if (dateTo.HasValue)
+                    query = query.Where(b => dateTo.Value >= (b.StartDateUtc ?? b.CreatedOnUtc));
+                if (languageId > 0)
+                    query = query.Where(b => languageId == b.LanguageId);
+                if (!string.IsNullOrEmpty(title))
+                    query = query.Where(b => b.Title.Contains(title));
+                if (!showHidden)
+                {
+                    query = query.Where(b => !b.StartDateUtc.HasValue || b.StartDateUtc <= DateTime.UtcNow);
+                    query = query.Where(b => !b.EndDateUtc.HasValue || b.EndDateUtc >= DateTime.UtcNow);
+                }
 
-            if (storeId > 0 && !_catalogSettings.IgnoreStoreLimitations)
-            {
-                //Store mapping
-                query = from bp in query
-                        join sm in _storeMappingRepository.Table
-                        on new { c1 = bp.Id, c2 = nameof(BlogPost) } equals new { c1 = sm.EntityId, c2 = sm.EntityName } into bp_sm
-                        from sm in bp_sm.DefaultIfEmpty()
-                        where !bp.LimitedToStores || storeId == sm.StoreId
-                        select bp;
+                if (storeId > 0 && !_catalogSettings.IgnoreStoreLimitations)
+                {
+                    //Store mapping
+                    query = from bp in query
+                            join sm in _storeMappingRepository.Table
+                            on new { c1 = bp.Id, c2 = nameof(BlogPost) } equals new { c1 = sm.EntityId, c2 = sm.EntityName } into bp_sm
+                            from sm in bp_sm.DefaultIfEmpty()
+                            where !bp.LimitedToStores || storeId == sm.StoreId
+                            select bp;
 
-                query = query.Distinct();
-            }
+                    query = query.Distinct();
+                }
 
-            query = query.OrderByDescending(b => b.StartDateUtc ?? b.CreatedOnUtc);
+                query = query.OrderByDescending(b => b.StartDateUtc ?? b.CreatedOnUtc);
 
-            var blogPosts = new PagedList<BlogPost>(query, pageIndex, pageSize);
-
-            return blogPosts;
+                return query;
+            }, pageIndex, pageSize);
         }
 
         /// <summary>
@@ -170,7 +172,7 @@ namespace Nop.Services.Blogs
 
             return blogPostTags;
         }
-        
+
         /// <summary>
         /// Returns all posts published between the two dates.
         /// </summary>
@@ -193,7 +195,7 @@ namespace Nop.Services.Blogs
         /// </summary>
         /// <param name="blogPost">Blog post</param>
         /// <returns>Tags</returns>
-        public virtual IList<string> ParseTags(BlogPost blogPost) 
+        public virtual IList<string> ParseTags(BlogPost blogPost)
         {
             if (blogPost == null)
                 throw new ArgumentNullException(nameof(blogPost));

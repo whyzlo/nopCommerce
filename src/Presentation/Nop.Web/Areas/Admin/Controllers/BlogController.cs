@@ -23,9 +23,9 @@ namespace Nop.Web.Areas.Admin.Controllers
     {
         #region Fields
 
+        private readonly IBlogCommentService _blogCommentService;
         private readonly IBlogModelFactory _blogModelFactory;
-        private readonly IBlogCommentsService _blogCommentsService;
-        private readonly IBlogPostsService _blogPostsService;
+        private readonly IBlogPostService _blogPostService;
         private readonly ICustomerActivityService _customerActivityService;
         private readonly IEventPublisher _eventPublisher;
         private readonly ILocalizationService _localizationService;
@@ -39,9 +39,9 @@ namespace Nop.Web.Areas.Admin.Controllers
 
         #region Ctor
 
-        public BlogController(IBlogModelFactory blogModelFactory,
-            IBlogCommentsService blogCommentsService,
-            IBlogPostsService blogPostsService,
+        public BlogController(IBlogCommentService blogCommentService, 
+            IBlogModelFactory blogModelFactory,
+            IBlogPostService blogPostService,
             ICustomerActivityService customerActivityService,
             IEventPublisher eventPublisher,
             ILocalizationService localizationService,
@@ -51,9 +51,9 @@ namespace Nop.Web.Areas.Admin.Controllers
             IStoreService storeService,
             IUrlRecordService urlRecordService)
         {
+            _blogCommentService = blogCommentService;
             _blogModelFactory = blogModelFactory;
-            _blogCommentsService = blogCommentsService;
-            _blogPostsService = blogPostsService;
+            _blogPostService = blogPostService;
             _customerActivityService = customerActivityService;
             _eventPublisher = eventPublisher;
             _localizationService = localizationService;
@@ -71,7 +71,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         protected virtual void SaveStoreMappings(BlogPost blogPost, BlogPostModel model)
         {
             blogPost.LimitedToStores = model.SelectedStoreIds.Any();
-            _blogPostsService.Update(blogPost);
+            _blogPostService.Update(blogPost);
 
             var existingStoreMappings = _storeMappingService.GetStoreMappings(blogPost);
             var allStores = _storeService.GetAllStores();
@@ -148,7 +148,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             {
                 var blogPost = model.ToEntity<BlogPost>();
                 blogPost.CreatedOnUtc = DateTime.UtcNow;
-                _blogPostsService.Insert(blogPost);
+                _blogPostService.Insert(blogPost);
 
                 //activity log
                 _customerActivityService.InsertActivity("AddNewBlogPost",
@@ -182,7 +182,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return AccessDeniedView();
 
             //try to get a blog post with the specified id
-            var blogPost = _blogPostsService.GetById(id);
+            var blogPost = _blogPostService.GetById(id);
             if (blogPost == null)
                 return RedirectToAction("BlogPosts");
 
@@ -199,14 +199,14 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return AccessDeniedView();
 
             //try to get a blog post with the specified id
-            var blogPost = _blogPostsService.GetById(model.Id);
+            var blogPost = _blogPostService.GetById(model.Id);
             if (blogPost == null)
                 return RedirectToAction("BlogPosts");
 
             if (ModelState.IsValid)
             {
                 blogPost = model.ToEntity(blogPost);
-                _blogPostsService.Update(blogPost);
+                _blogPostService.Update(blogPost);
 
                 //activity log
                 _customerActivityService.InsertActivity("EditBlogPost",
@@ -241,11 +241,11 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return AccessDeniedView();
 
             //try to get a blog post with the specified id
-            var blogPost = _blogPostsService.GetById(id);
+            var blogPost = _blogPostService.GetById(id);
             if (blogPost == null)
                 return RedirectToAction("BlogPosts");
 
-            _blogPostsService.Delete(blogPost);
+            _blogPostService.Delete(blogPost);
 
             //activity log
             _customerActivityService.InsertActivity("DeleteBlogPost",
@@ -266,7 +266,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return AccessDeniedView();
 
             //try to get a blog post with the specified id
-            var blogPost = _blogPostsService.GetById(filterByBlogPostId ?? 0);
+            var blogPost = _blogPostService.GetById(filterByBlogPostId ?? 0);
             if (blogPost == null && filterByBlogPostId.HasValue)
                 return RedirectToAction("BlogComments");
 
@@ -295,15 +295,15 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return AccessDeniedView();
 
             //try to get a blog comment with the specified id
-            var comment = _blogCommentsService.GetById(model.Id)
-                          ?? throw new ArgumentException("No comment found with the specified id");
+            var comment = _blogCommentService.GetById(model.Id)
+                ?? throw new ArgumentException("No comment found with the specified id");
 
             var previousIsApproved = comment.IsApproved;
 
             //fill entity from model
             comment = model.ToEntity(comment);
 
-            _blogCommentsService.Update(comment);
+            _blogCommentService.Update(comment);
 
             //raise event (only if it wasn't approved before and is approved now)
             if (!previousIsApproved && comment.IsApproved)
@@ -322,10 +322,10 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return AccessDeniedView();
 
             //try to get a blog comment with the specified id
-            var comment = _blogCommentsService.GetById(id)
-                          ?? throw new ArgumentException("No comment found with the specified id", nameof(id));
+            var comment = _blogCommentService.GetById(id)
+                ?? throw new ArgumentException("No comment found with the specified id", nameof(id));
 
-            _blogCommentsService.Delete(comment);
+            _blogCommentService.Delete(comment);
 
             //activity log
             _customerActivityService.InsertActivity("DeleteBlogPostComment",
@@ -343,14 +343,15 @@ namespace Nop.Web.Areas.Admin.Controllers
             if (selectedIds == null)
                 return Json(new { Result = true });
 
-            var comments = _blogCommentsService.GetByIds(selectedIds.ToArray());
+            var comments = _blogCommentService.GetByIds(selectedIds.ToArray());
 
-            _blogCommentsService.Delete(comments);
-
+            _blogCommentService.Delete(comments);
             //activity log
             foreach (var blogComment in comments)
+            {
                 _customerActivityService.InsertActivity("DeleteBlogPostComment",
                     string.Format(_localizationService.GetResource("ActivityLog.DeleteBlogPostComment"), blogComment.Id), blogComment);
+            }
 
             return Json(new { Result = true });
         }
@@ -365,13 +366,13 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return Json(new { Result = true });
 
             //filter not approved comments
-            var blogComments = _blogCommentsService.GetByIds(selectedIds.ToArray()).Where(comment => !comment.IsApproved);
+            var blogComments = _blogCommentService.GetByIds(selectedIds.ToArray()).Where(comment => !comment.IsApproved);
 
             foreach (var blogComment in blogComments)
             {
                 blogComment.IsApproved = true;
 
-                _blogCommentsService.Update(blogComment);
+                _blogCommentService.Update(blogComment);
 
                 //raise event 
                 _eventPublisher.Publish(new BlogCommentApprovedEvent(blogComment));
@@ -394,13 +395,13 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return Json(new { Result = true });
 
             //filter approved comments
-            var blogComments = _blogCommentsService.GetByIds(selectedIds.ToArray()).Where(comment => comment.IsApproved);
+            var blogComments = _blogCommentService.GetByIds(selectedIds.ToArray()).Where(comment => comment.IsApproved);
 
             foreach (var blogComment in blogComments)
             {
                 blogComment.IsApproved = false;
 
-                _blogCommentsService.Update(blogComment);
+                _blogCommentService.Update(blogComment);
 
                 //activity log
                 _customerActivityService.InsertActivity("EditBlogComment",

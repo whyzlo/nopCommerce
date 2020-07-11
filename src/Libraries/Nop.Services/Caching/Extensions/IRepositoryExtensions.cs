@@ -5,6 +5,7 @@ using Nop.Data;
 
 namespace Nop.Services.Caching.Extensions
 {
+    //TODO: remove after completion https://github.com/nopSolutions/nopCommerce/issues/4881
     public static class IRepositoryExtensions
     {
         /// <summary>

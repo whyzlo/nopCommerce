@@ -11119,8 +11119,7 @@ namespace Nop.Services.Installation
             if (defaultLanguage == null)
                 throw new Exception("Default language could not be loaded");
 
-            var blogPostsService = EngineContext.Current.Resolve<IBlogPostsService>();
-            var blogCommentsService = EngineContext.Current.Resolve<IBlogCommentsService>();
+            var blogCommentService = EngineContext.Current.Resolve<IBlogCommentService>();
 
             var blogPosts = new List<BlogPost>
             {
@@ -11173,7 +11172,7 @@ namespace Nop.Services.Installation
 
             foreach (var blogPost in blogPosts)
             {
-                blogCommentsService.Insert(new BlogComment
+                blogCommentService.Insert(new BlogComment
                 {
                     BlogPostId = blogPost.Id,
                     CustomerId = defaultCustomer.Id,
@@ -11181,7 +11180,7 @@ namespace Nop.Services.Installation
                     IsApproved = true,
                     StoreId = defaultStore.Id,
                     CreatedOnUtc = DateTime.UtcNow
-                });
+                }, false);
             }
 
             _blogPostRepository.Update(blogPosts);

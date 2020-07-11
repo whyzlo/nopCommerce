@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using Nop.Core;
+using Nop.Core.Caching;
 using Nop.Core.Domain.Affiliates;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Orders;
@@ -13,14 +14,15 @@ using Nop.Services.Seo;
 namespace Nop.Services.Affiliates
 {
     /// <summary>
-    /// Affiliate service
+    /// Represents the affiliate service implementation
     /// </summary>
-    public partial class AffiliateService : CrudService<Affiliate>, IAffiliateService
+    public partial class AffiliateService : Service<Affiliate>, IAffiliateService
     {
         #region Fields
 
         private readonly IAddressService _addressService;
         private readonly IRepository<Address> _addressRepository;
+        private readonly IRepository<Affiliate> _affiliateRepository;
         private readonly IRepository<Order> _orderRepository;
         private readonly IUrlRecordService _urlRecordService;
         private readonly IWebHelper _webHelper;
@@ -31,14 +33,18 @@ namespace Nop.Services.Affiliates
         #region Ctor
 
         public AffiliateService(IAddressService addressService,
+            IEventPublisher eventPublisher,
             IRepository<Address> addressRepository,
+            IRepository<Affiliate> affiliateRepository,
             IRepository<Order> orderRepository,
+            IStaticCacheManager staticCacheManager,
             IUrlRecordService urlRecordService,
             IWebHelper webHelper,
-            SeoSettings seoSettings)
+            SeoSettings seoSettings) : base(eventPublisher, affiliateRepository, staticCacheManager)
         {
             _addressService = addressService;
             _addressRepository = addressRepository;
+            _affiliateRepository = affiliateRepository;
             _orderRepository = orderRepository;
             _urlRecordService = urlRecordService;
             _webHelper = webHelper;
@@ -59,28 +65,12 @@ namespace Nop.Services.Affiliates
             if (string.IsNullOrWhiteSpace(friendlyUrlName))
                 return null;
 
-            var query = from a in _repository.Table
+            var query = from a in _affiliateRepository.Table
                         orderby a.Id
                         where a.FriendlyUrlName == friendlyUrlName
                         select a;
             var affiliate = query.FirstOrDefault();
             return affiliate;
-        }
-
-        /// <summary>
-        /// Marks affiliate as deleted 
-        /// </summary>
-        /// <param name="affiliate">Affiliate</param>
-        public override void Delete(Affiliate affiliate)
-        {
-            if (affiliate == null)
-                throw new ArgumentNullException(nameof(affiliate));
-
-            affiliate.Deleted = true;
-            Update(affiliate);
-
-            //event notification
-            _eventPublisher.EntityDeleted(affiliate);
         }
 
         /// <summary>
@@ -103,46 +93,50 @@ namespace Nop.Services.Affiliates
             int pageIndex = 0, int pageSize = int.MaxValue,
             bool showHidden = false)
         {
-            var query = _repository.Table;
-
-            if (!string.IsNullOrWhiteSpace(friendlyUrlName))
-                query = query.Where(a => a.FriendlyUrlName.Contains(friendlyUrlName));
-
-            if (!string.IsNullOrWhiteSpace(firstName))
-                query = from aff in query
-                         join addr in _addressRepository.Table on aff.AddressId equals addr.Id
-                         where addr.FirstName.Contains(firstName)
-                         select aff;
-
-            if (!string.IsNullOrWhiteSpace(lastName))
-                query = from aff in query
-                         join addr in _addressRepository.Table on aff.AddressId equals addr.Id
-                         where addr.LastName.Contains(lastName)
-                         select aff;
-
-            if (!showHidden)
-                query = query.Where(a => a.Active);
-            query = query.Where(a => !a.Deleted);
-
-            if (loadOnlyWithOrders)
+            return GetAllPaged(query =>
             {
-                var ordersQuery = _orderRepository.Table;
-                if (ordersCreatedFromUtc.HasValue)
-                    ordersQuery = ordersQuery.Where(o => ordersCreatedFromUtc.Value <= o.CreatedOnUtc);
-                if (ordersCreatedToUtc.HasValue)
-                    ordersQuery = ordersQuery.Where(o => ordersCreatedToUtc.Value >= o.CreatedOnUtc);
-                ordersQuery = ordersQuery.Where(o => !o.Deleted);
+                if (!string.IsNullOrWhiteSpace(friendlyUrlName))
+                    query = query.Where(a => a.FriendlyUrlName.Contains(friendlyUrlName));
 
-                query = from a in query
-                        join o in ordersQuery on a.Id equals o.AffiliateId
-                        select a;
-            }
+                if (!string.IsNullOrWhiteSpace(firstName))
+                {
+                    query = from aff in query
+                            join addr in _addressRepository.Table on aff.AddressId equals addr.Id
+                            where addr.FirstName.Contains(firstName)
+                            select aff;
+                }
 
-            query = query.Distinct().OrderByDescending(a => a.Id);
+                if (!string.IsNullOrWhiteSpace(lastName))
+                {
+                    query = from aff in query
+                            join addr in _addressRepository.Table on aff.AddressId equals addr.Id
+                            where addr.LastName.Contains(lastName)
+                            select aff;
+                }
 
-            var affiliates = new PagedList<Affiliate>(query, pageIndex, pageSize);
+                if (!showHidden)
+                    query = query.Where(a => a.Active);
 
-            return affiliates;
+                query = query.Where(a => !a.Deleted);
+
+                if (loadOnlyWithOrders)
+                {
+                    var ordersQuery = _orderRepository.Table;
+                    if (ordersCreatedFromUtc.HasValue)
+                        ordersQuery = ordersQuery.Where(o => ordersCreatedFromUtc.Value <= o.CreatedOnUtc);
+                    if (ordersCreatedToUtc.HasValue)
+                        ordersQuery = ordersQuery.Where(o => ordersCreatedToUtc.Value >= o.CreatedOnUtc);
+                    ordersQuery = ordersQuery.Where(o => !o.Deleted);
+
+                    query = from a in query
+                            join o in ordersQuery on a.Id equals o.AffiliateId
+                            select a;
+                }
+
+                query = query.Distinct().OrderByDescending(a => a.Id);
+
+                return query;
+            }, pageIndex, pageSize);
         }
 
         /// <summary>

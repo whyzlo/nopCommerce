@@ -210,8 +210,8 @@ namespace Nop.Web.Framework.Infrastructure
             builder.RegisterType<ForumService>().As<IForumService>().InstancePerLifetimeScope();
             builder.RegisterType<GdprService>().As<IGdprService>().InstancePerLifetimeScope();
             builder.RegisterType<PollService>().As<IPollService>().InstancePerLifetimeScope();
-            builder.RegisterType<BlogPostsService>().As<IBlogPostsService>().InstancePerLifetimeScope();
-            builder.RegisterType<BlogPostsService>().As<IBlogCommentsService>().InstancePerLifetimeScope();
+            builder.RegisterType<BlogCommentService>().As<IBlogCommentService>().InstancePerLifetimeScope();
+            builder.RegisterType<BlogPostService>().As<IBlogPostService>().InstancePerLifetimeScope();
             builder.RegisterType<TopicService>().As<ITopicService>().InstancePerLifetimeScope();
             builder.RegisterType<NewsService>().As<INewsService>().InstancePerLifetimeScope();
             builder.RegisterType<DateTimeHelper>().As<IDateTimeHelper>().InstancePerLifetimeScope();

@@ -5,13 +5,14 @@ using Nop.Core.Caching;
 using Nop.Core.Domain.Blogs;
 using Nop.Data;
 using Nop.Services.Caching;
+using Nop.Services.Events;
 
 namespace Nop.Services.Blogs
 {
     /// <summary>
-    /// Blog service
+    /// Represents the blog comment service implementation
     /// </summary>
-    public partial class BlogCommentsService : CrudService<BlogComment>, IBlogCommentsService
+    public partial class BlogCommentService : Service<BlogComment>, IBlogCommentService
     {
         #region Fields
 
@@ -23,9 +24,10 @@ namespace Nop.Services.Blogs
 
         #region Ctor
 
-        public BlogCommentsService(ICacheKeyService cacheKeyService,
+        public BlogCommentService(ICacheKeyService cacheKeyService,
+            IEventPublisher eventPublisher,
             IRepository<BlogComment> blogCommentRepository,
-            IStaticCacheManager staticCacheManager)
+            IStaticCacheManager staticCacheManager) : base(eventPublisher, blogCommentRepository, staticCacheManager)
         {
             _cacheKeyService = cacheKeyService;
             _blogCommentRepository = blogCommentRepository;
@@ -35,7 +37,7 @@ namespace Nop.Services.Blogs
         #endregion
 
         #region Methods
-        
+
         /// <summary>
         /// Gets all comments
         /// </summary>
@@ -50,34 +52,35 @@ namespace Nop.Services.Blogs
         public virtual IList<BlogComment> GetAllComments(int customerId = 0, int storeId = 0, int? blogPostId = null,
             bool? approved = null, DateTime? fromUtc = null, DateTime? toUtc = null, string commentText = null)
         {
-            var query = _blogCommentRepository.Table;
+            return GetAll(query =>
+            {
+                if (approved.HasValue)
+                    query = query.Where(comment => comment.IsApproved == approved);
 
-            if (approved.HasValue)
-                query = query.Where(comment => comment.IsApproved == approved);
+                if (blogPostId > 0)
+                    query = query.Where(comment => comment.BlogPostId == blogPostId);
 
-            if (blogPostId > 0)
-                query = query.Where(comment => comment.BlogPostId == blogPostId);
+                if (customerId > 0)
+                    query = query.Where(comment => comment.CustomerId == customerId);
 
-            if (customerId > 0)
-                query = query.Where(comment => comment.CustomerId == customerId);
+                if (storeId > 0)
+                    query = query.Where(comment => comment.StoreId == storeId);
 
-            if (storeId > 0)
-                query = query.Where(comment => comment.StoreId == storeId);
+                if (fromUtc.HasValue)
+                    query = query.Where(comment => fromUtc.Value <= comment.CreatedOnUtc);
 
-            if (fromUtc.HasValue)
-                query = query.Where(comment => fromUtc.Value <= comment.CreatedOnUtc);
+                if (toUtc.HasValue)
+                    query = query.Where(comment => toUtc.Value >= comment.CreatedOnUtc);
 
-            if (toUtc.HasValue)
-                query = query.Where(comment => toUtc.Value >= comment.CreatedOnUtc);
+                if (!string.IsNullOrEmpty(commentText))
+                    query = query.Where(c => c.CommentText.Contains(commentText));
 
-            if (!string.IsNullOrEmpty(commentText))
-                query = query.Where(c => c.CommentText.Contains(commentText));
+                query = query.OrderBy(comment => comment.CreatedOnUtc);
 
-            query = query.OrderBy(comment => comment.CreatedOnUtc);
-
-            return query.ToList();
+                return query;
+            });
         }
-        
+
         /// <summary>
         /// Get the count of blog comments
         /// </summary>

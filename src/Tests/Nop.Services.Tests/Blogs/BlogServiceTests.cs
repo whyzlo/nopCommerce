@@ -11,12 +11,12 @@ namespace Nop.Services.Tests.Blogs
     [TestFixture]
     public class BlogServiceTests
     {
-        private IBlogPostsService _blogPostsService;
+        private IBlogPostService _blogPostService;
 
         [SetUp]
         public void SetUp()
         {
-            _blogPostsService = new BlogPostsService(new CatalogSettings(), new FakeCacheKeyService(),  null, null, new TestCacheManager());
+            _blogPostService = new BlogPostService(new CatalogSettings(), new FakeCacheKeyService(), null, null, null, new TestCacheManager());
         }
 
         [Test]
@@ -27,7 +27,7 @@ namespace Nop.Services.Tests.Blogs
                 Tags = "tag1, tag2, tag 3 4,  "
             };
 
-            var tags = _blogPostsService.ParseTags(blogPost);
+            var tags = _blogPostService.ParseTags(blogPost);
             tags.Count.Should().Be(3);
             tags[0].Should().Be("tag1");
             tags[1].Should().Be("tag2");
@@ -42,7 +42,7 @@ namespace Nop.Services.Tests.Blogs
                 StartDateUtc = null
             };
 
-            _blogPostsService.BlogPostIsAvailable(blogPost, new DateTime(2010, 01, 03)).Should().BeTrue();
+            _blogPostService.BlogPostIsAvailable(blogPost, new DateTime(2010, 01, 03)).Should().BeTrue();
         }
 
         [Test]
@@ -53,7 +53,7 @@ namespace Nop.Services.Tests.Blogs
                 StartDateUtc = new DateTime(2010, 01, 02)
             };
 
-            _blogPostsService.BlogPostIsAvailable(blogPost, new DateTime(2010, 01, 03)).Should().BeTrue();
+            _blogPostService.BlogPostIsAvailable(blogPost, new DateTime(2010, 01, 03)).Should().BeTrue();
         }
 
         [Test]
@@ -64,7 +64,7 @@ namespace Nop.Services.Tests.Blogs
                 StartDateUtc = new DateTime(2010, 01, 02)
             };
 
-            _blogPostsService.BlogPostIsAvailable(blogPost, new DateTime(2010, 01, 01)).Should().BeFalse();
+            _blogPostService.BlogPostIsAvailable(blogPost, new DateTime(2010, 01, 01)).Should().BeFalse();
         }
 
         [Test]
@@ -75,7 +75,7 @@ namespace Nop.Services.Tests.Blogs
                 EndDateUtc = null
             };
 
-            _blogPostsService.BlogPostIsAvailable(blogPost, new DateTime(2010, 01, 03)).Should().BeTrue();
+            _blogPostService.BlogPostIsAvailable(blogPost, new DateTime(2010, 01, 03)).Should().BeTrue();
         }
 
         [Test]
@@ -86,7 +86,7 @@ namespace Nop.Services.Tests.Blogs
                 EndDateUtc = new DateTime(2010, 01, 02)
             };
 
-            _blogPostsService.BlogPostIsAvailable(blogPost, new DateTime(2010, 01, 01)).Should().BeTrue();
+            _blogPostService.BlogPostIsAvailable(blogPost, new DateTime(2010, 01, 01)).Should().BeTrue();
         }
 
         [Test]
@@ -97,7 +97,7 @@ namespace Nop.Services.Tests.Blogs
                 EndDateUtc = new DateTime(2010, 01, 02)
             };
 
-            _blogPostsService.BlogPostIsAvailable(blogPost, new DateTime(2010, 01, 03)).Should().BeFalse();
+            _blogPostService.BlogPostIsAvailable(blogPost, new DateTime(2010, 01, 03)).Should().BeFalse();
         }
     }
 }

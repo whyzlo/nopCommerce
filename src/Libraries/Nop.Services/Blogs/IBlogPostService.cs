@@ -6,9 +6,9 @@ using Nop.Core.Domain.Blogs;
 namespace Nop.Services.Blogs
 {
     /// <summary>
-    /// Blog service interface
+    /// Represents a blog post service
     /// </summary>
-    public partial interface IBlogPostsService : ICrudService<BlogPost>
+    public partial interface IBlogPostService : IService<BlogPost>
     {
         /// <summary>
         /// Gets all blog posts
@@ -23,7 +23,7 @@ namespace Nop.Services.Blogs
         /// <param name="title">Filter by blog post title</param>
         /// <returns>Blog posts</returns>
         IPagedList<BlogPost> GetAllBlogPosts(int storeId = 0, int languageId = 0,
-            DateTime? dateFrom = null, DateTime? dateTo = null, 
+            DateTime? dateFrom = null, DateTime? dateTo = null,
             int pageIndex = 0, int pageSize = int.MaxValue, bool showHidden = false, string title = null);
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace Nop.Services.Blogs
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Blog post tags</returns>
         IList<BlogPostTag> GetAllBlogPostTags(int storeId, int languageId, bool showHidden = false);
-        
+
         /// <summary>
         /// Returns all posts published between the two dates.
         /// </summary>

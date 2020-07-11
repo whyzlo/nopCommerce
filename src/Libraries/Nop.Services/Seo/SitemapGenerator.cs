@@ -34,7 +34,7 @@ namespace Nop.Services.Seo
         private readonly BlogSettings _blogSettings;
         private readonly ForumSettings _forumSettings;
         private readonly IActionContextAccessor _actionContextAccessor;
-        private readonly IBlogPostsService _blogPostsService;
+        private readonly IBlogPostService _blogPostService;
         private readonly ICategoryService _categoryService;
         private readonly ILanguageService _languageService;
         private readonly IManufacturerService _manufacturerService;
@@ -57,7 +57,7 @@ namespace Nop.Services.Seo
         public SitemapGenerator(BlogSettings blogSettings,
             ForumSettings forumSettings,
             IActionContextAccessor actionContextAccessor,
-            IBlogPostsService blogPostsService,
+            IBlogPostService blogPostService,
             ICategoryService categoryService,
             ILanguageService languageService,
             IManufacturerService manufacturerService,
@@ -76,7 +76,7 @@ namespace Nop.Services.Seo
             _blogSettings = blogSettings;
             _forumSettings = forumSettings;
             _actionContextAccessor = actionContextAccessor;
-            _blogPostsService = blogPostsService;
+            _blogPostService = blogPostService;
             _categoryService = categoryService;
             _languageService = languageService;
             _manufacturerService = manufacturerService;
@@ -305,7 +305,7 @@ namespace Nop.Services.Seo
         /// <returns>Sitemap URLs</returns>
         protected virtual IEnumerable<SitemapUrl> GetBlogPostUrls()
         {
-            return _blogPostsService.GetAllBlogPosts(_storeContext.CurrentStore.Id)
+            return _blogPostService.GetAllBlogPosts(_storeContext.CurrentStore.Id)
                 .Where(p => p.IncludeInSitemap)
                 .Select(post => GetLocalizedSitemapUrl("BlogPost", GetSeoRouteParams(post)));
         }

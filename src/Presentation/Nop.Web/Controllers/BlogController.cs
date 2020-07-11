@@ -31,9 +31,9 @@ namespace Nop.Web.Controllers
 
         private readonly BlogSettings _blogSettings;
         private readonly CaptchaSettings _captchaSettings;
-        private readonly IBlogCommentsService _blogCommentsService;
+        private readonly IBlogCommentService _blogCommentService;
         private readonly IBlogModelFactory _blogModelFactory;
-        private readonly IBlogPostsService _blogPostsService;
+        private readonly IBlogPostService _blogPostService;
         private readonly ICustomerActivityService _customerActivityService;
         private readonly ICustomerService _customerService;
         private readonly IEventPublisher _eventPublisher;
@@ -53,9 +53,9 @@ namespace Nop.Web.Controllers
 
         public BlogController(BlogSettings blogSettings,
             CaptchaSettings captchaSettings,
-            IBlogCommentsService blogCommentsService,
+            IBlogCommentService blogCommentService,
             IBlogModelFactory blogModelFactory,
-            IBlogPostsService blogPostsService,
+            IBlogPostService blogPostService,
             ICustomerActivityService customerActivityService,
             ICustomerService customerService,
             IEventPublisher eventPublisher,
@@ -71,9 +71,9 @@ namespace Nop.Web.Controllers
         {
             _blogSettings = blogSettings;
             _captchaSettings = captchaSettings;
-            _blogCommentsService = blogCommentsService;
+            _blogCommentService = blogCommentService;
             _blogModelFactory = blogModelFactory;
-            _blogPostsService = blogPostsService;
+            _blogPostService = blogPostService;
             _customerActivityService = customerActivityService;
             _customerService = customerService;
             _eventPublisher = eventPublisher;
@@ -131,7 +131,7 @@ namespace Nop.Web.Controllers
                 return new RssActionResult(feed, _webHelper.GetThisPageUrl(false));
 
             var items = new List<RssItem>();
-            var blogPosts = _blogPostsService.GetAllBlogPosts(_storeContext.CurrentStore.Id, languageId);
+            var blogPosts = _blogPostService.GetAllBlogPosts(_storeContext.CurrentStore.Id, languageId);
             foreach (var blogPost in blogPosts)
             {
                 var blogPostUrl = Url.RouteUrl("BlogPost", new { SeName = _urlRecordService.GetSeName(blogPost, blogPost.LanguageId, ensureTwoPublishedLanguages: false) }, _webHelper.CurrentRequestProtocol);
@@ -147,13 +147,13 @@ namespace Nop.Web.Controllers
             if (!_blogSettings.Enabled)
                 return RedirectToRoute("Homepage");
 
-            var blogPost = _blogPostsService.GetById(blogPostId);
+            var blogPost = _blogPostService.GetById(blogPostId);
             if (blogPost == null)
                 return InvokeHttp404();
 
             var notAvailable =
                 //availability dates
-                !_blogPostsService.BlogPostIsAvailable(blogPost) ||
+                !_blogPostService.BlogPostIsAvailable(blogPost) ||
                 //Store mapping
                 !_storeMappingService.Authorize(blogPost);
             //Check whether the current user has a "Manage blog" permission (usually a store owner)
@@ -180,7 +180,7 @@ namespace Nop.Web.Controllers
             if (!_blogSettings.Enabled)
                 return RedirectToRoute("Homepage");
 
-            var blogPost = _blogPostsService.GetById(blogPostId);
+            var blogPost = _blogPostService.GetById(blogPostId);
             if (blogPost == null || !blogPost.AllowComments)
                 return RedirectToRoute("Homepage");
 
@@ -207,7 +207,7 @@ namespace Nop.Web.Controllers
                     CreatedOnUtc = DateTime.UtcNow,
                 };
 
-                _blogCommentsService.Insert(comment);
+                _blogCommentService.Insert(comment);
 
                 //notify a store owner
                 if (_blogSettings.NotifyAboutNewBlogComments)

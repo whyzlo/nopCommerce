@@ -5,9 +5,9 @@ using Nop.Core.Domain.Affiliates;
 namespace Nop.Services.Affiliates
 {
     /// <summary>
-    /// Affiliate service interface
+    /// Represents an affiliate service
     /// </summary>
-    public partial interface IAffiliateService: ICrudService<Affiliate>
+    public partial interface IAffiliateService : IService<Affiliate>
     {
         /// <summary>
         /// Gets an affiliate by friendly URL name
@@ -15,7 +15,7 @@ namespace Nop.Services.Affiliates
         /// <param name="friendlyUrlName">Friendly URL name</param>
         /// <returns>Affiliate</returns>
         Affiliate GetAffiliateByFriendlyUrlName(string friendlyUrlName);
-        
+
         /// <summary>
         /// Gets all affiliates
         /// </summary>
