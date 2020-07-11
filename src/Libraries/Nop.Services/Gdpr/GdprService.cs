@@ -30,7 +30,7 @@ namespace Nop.Services.Gdpr
 
         private readonly IAddressService _addressService;
         private readonly IBackInStockSubscriptionService _backInStockSubscriptionService;
-        private readonly IBlogCommentService _blogCommentService;
+        private readonly IBlogService _blogService;
         private readonly ICacheKeyService _cacheKeyService;
         private readonly ICustomerService _customerService;
         private readonly IExternalAuthenticationService _externalAuthenticationService;
@@ -51,7 +51,7 @@ namespace Nop.Services.Gdpr
 
         public GdprService(IAddressService addressService,
             IBackInStockSubscriptionService backInStockSubscriptionService,
-            IBlogCommentService blogCommentService,
+            IBlogService blogService,
             ICacheKeyService cacheKeyService,
             ICustomerService customerService,
             IExternalAuthenticationService externalAuthenticationService,
@@ -68,7 +68,7 @@ namespace Nop.Services.Gdpr
         {
             _addressService = addressService;
             _backInStockSubscriptionService = backInStockSubscriptionService;
-            _blogCommentService = blogCommentService;
+            _blogService = blogService;
             _cacheKeyService = cacheKeyService;
             _customerService = customerService;
             _externalAuthenticationService = externalAuthenticationService;
@@ -324,8 +324,8 @@ namespace Nop.Services.Gdpr
                 throw new ArgumentNullException(nameof(customer));
 
             //blog comments
-            var blogComments = _blogCommentService.GetAllComments(customerId: customer.Id);
-            _blogCommentService.Delete(blogComments);
+            var blogComments = _blogService.GetAllComments(customerId: customer.Id);
+            _blogService.DeleteBlogComments(blogComments);
 
             //news comments
             var newsComments = _newsService.GetAllComments(customerId: customer.Id);

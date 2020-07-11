@@ -58,7 +58,7 @@ namespace Nop.Services.Messages
         private readonly IActionContextAccessor _actionContextAccessor;
         private readonly IAddressAttributeFormatter _addressAttributeFormatter;
         private readonly IAddressService _addressService;
-        private readonly IBlogPostService _blogPostService;
+        private readonly IBlogService _blogService;
         private readonly ICountryService _countryService;
         private readonly ICurrencyService _currencyService;
         private readonly ICustomerAttributeFormatter _customerAttributeFormatter;
@@ -100,7 +100,7 @@ namespace Nop.Services.Messages
             IActionContextAccessor actionContextAccessor,
             IAddressAttributeFormatter addressAttributeFormatter,
             IAddressService addressService,
-            IBlogPostService blogPostService,
+            IBlogService blogService,
             ICountryService countryService,
             ICurrencyService currencyService,
             ICustomerAttributeFormatter customerAttributeFormatter,
@@ -136,7 +136,7 @@ namespace Nop.Services.Messages
             _actionContextAccessor = actionContextAccessor;
             _addressAttributeFormatter = addressAttributeFormatter;
             _addressService = addressService;
-            _blogPostService = blogPostService;
+            _blogService = blogService;
             _countryService = countryService;
             _currencyService = currencyService;
             _customerAttributeFormatter = customerAttributeFormatter;
@@ -1258,7 +1258,7 @@ namespace Nop.Services.Messages
         /// <param name="blogComment">Blog post comment</param>
         public virtual void AddBlogCommentTokens(IList<Token> tokens, BlogComment blogComment)
         {
-            var blogPost = _blogPostService.GetById(blogComment.BlogPostId);
+            var blogPost = _blogService.GetBlogPostById(blogComment.BlogPostId);
 
             tokens.Add(new Token("BlogComment.BlogPostTitle", blogPost.Title));
 

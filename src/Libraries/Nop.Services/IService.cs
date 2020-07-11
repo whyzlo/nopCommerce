@@ -4,6 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using Nop.Core;
 using Nop.Core.Caching;
+using Nop.Services.Caching;
 
 namespace Nop.Services
 {
@@ -35,9 +36,10 @@ namespace Nop.Services
         /// Get all entity entries
         /// </summary>
         /// <param name="func">Function to select entries</param>
-        /// <param name="cacheKey">Cache key; pass null to not cache entries</param>
+        /// <param name="cacheKeyFunc">Function to get cache key; pass null to not cache entries</param>
         /// <returns>Entity entries</returns>
-        IList<TEntity> GetAll(Func<IQueryable<TEntity>, IQueryable<TEntity>> func = null, CacheKey cacheKey = null);
+        IList<TEntity> GetAll(Func<IQueryable<TEntity>, IQueryable<TEntity>> func = null,
+            Func<ICacheKeyService, CacheKey> cacheKeyFunc = null);
 
         /// <summary>
         /// Get paged list of all entity entries (caching is not supported)

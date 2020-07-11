@@ -34,6 +34,7 @@ using Nop.Web.Framework.Events;
 using Nop.Web.Infrastructure.Cache;
 using Nop.Web.Models.Catalog;
 using Nop.Web.Models.Media;
+using Nop.Services;
 
 namespace Nop.Web.Factories
 {
@@ -48,7 +49,6 @@ namespace Nop.Web.Factories
         private readonly IActionContextAccessor _actionContextAccessor;
         private readonly ICacheKeyService _cacheKeyService;
         private readonly ICategoryService _categoryService;
-        private readonly ICategoryTemplateService _categoryTemplateService;
         private readonly ICurrencyService _currencyService;
         private readonly ICustomerService _customerService;
         private readonly IEventPublisher _eventPublisher;
@@ -62,6 +62,7 @@ namespace Nop.Web.Factories
         private readonly IProductService _productService;
         private readonly IProductTagService _productTagService;
         private readonly ISearchTermService _searchTermService;
+        private readonly IService<CategoryTemplate> _categoryTemplateService;
         private readonly ISpecificationAttributeService _specificationAttributeService;
         private readonly IStaticCacheManager _staticCacheManager;
         private readonly IStoreContext _storeContext;
@@ -85,7 +86,6 @@ namespace Nop.Web.Factories
             IActionContextAccessor actionContextAccessor,
             ICacheKeyService cacheKeyService,
             ICategoryService categoryService,
-            ICategoryTemplateService categoryTemplateService,
             ICurrencyService currencyService,
             ICustomerService customerService,
             IEventPublisher eventPublisher,
@@ -99,6 +99,7 @@ namespace Nop.Web.Factories
             IProductService productService,
             IProductTagService productTagService,
             ISearchTermService searchTermService,
+            IService<CategoryTemplate> categoryTemplateService,
             ISpecificationAttributeService specificationAttributeService,
             IStaticCacheManager staticCacheManager,
             IStoreContext storeContext,
@@ -118,7 +119,6 @@ namespace Nop.Web.Factories
             _actionContextAccessor = actionContextAccessor;
             _cacheKeyService = cacheKeyService;
             _categoryService = categoryService;
-            _categoryTemplateService = categoryTemplateService;
             _currencyService = currencyService;
             _customerService = customerService;
             _eventPublisher = eventPublisher;
@@ -132,6 +132,7 @@ namespace Nop.Web.Factories
             _productService = productService;
             _productTagService = productTagService;
             _searchTermService = searchTermService;
+            _categoryTemplateService = categoryTemplateService;
             _specificationAttributeService = specificationAttributeService;
             _staticCacheManager = staticCacheManager;
             _storeContext = storeContext;
@@ -500,11 +501,12 @@ namespace Nop.Web.Factories
         /// <returns>Category template view path</returns>
         public virtual string PrepareCategoryTemplateViewPath(int templateId)
         {
-            var template = _categoryTemplateService.GetCategoryTemplateById(templateId) ??
-                           _categoryTemplateService.GetAllCategoryTemplates().FirstOrDefault();
-
-            if (template == null)
-                throw new Exception("No default template could be loaded");
+            var template = _categoryTemplateService.GetById(templateId)
+                ?? _categoryTemplateService
+                    .GetAll(query => query.OrderBy(template => template.DisplayOrder).ThenBy(template => template.Id),
+                        cacheKeyService => cacheKeyService.PrepareKeyForDefaultCache(NopCatalogDefaults.CategoryTemplatesAllCacheKey))
+                    .FirstOrDefault()
+                ?? throw new Exception("No default template could be loaded");
 
             return template.ViewPath;
         }

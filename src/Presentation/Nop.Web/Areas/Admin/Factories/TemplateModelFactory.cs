@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Linq;
+using Nop.Core.Domain.Catalog;
+using Nop.Services;
 using Nop.Services.Catalog;
 using Nop.Services.Topics;
 using Nop.Web.Areas.Admin.Infrastructure.Mapper.Extensions;
@@ -15,23 +17,23 @@ namespace Nop.Web.Areas.Admin.Factories
     {
         #region Fields
 
-        private readonly ICategoryTemplateService _categoryTemplateService;
         private readonly IManufacturerTemplateService _manufacturerTemplateService;
         private readonly IProductTemplateService _productTemplateService;
+        private readonly IService<CategoryTemplate> _categoryTemplateService;
         private readonly ITopicTemplateService _topicTemplateService;
 
         #endregion
 
         #region Ctor
 
-        public TemplateModelFactory(ICategoryTemplateService categoryTemplateService,
-            IManufacturerTemplateService manufacturerTemplateService,
+        public TemplateModelFactory(IManufacturerTemplateService manufacturerTemplateService,
             IProductTemplateService productTemplateService,
+            IService<CategoryTemplate> categoryTemplateService,
             ITopicTemplateService topicTemplateService)
         {
-            _categoryTemplateService = categoryTemplateService;
             _manufacturerTemplateService = manufacturerTemplateService;
             _productTemplateService = productTemplateService;
+            _categoryTemplateService = categoryTemplateService;
             _topicTemplateService = topicTemplateService;
         }
 
@@ -85,7 +87,8 @@ namespace Nop.Web.Areas.Admin.Factories
                 throw new ArgumentNullException(nameof(searchModel));
 
             //get category templates
-            var categoryTemplates = _categoryTemplateService.GetAllCategoryTemplates().ToPagedList(searchModel);
+            var categoryTemplates = _categoryTemplateService.GetAllPaged(query => query.OrderByDescending(template => template.Id), 
+                searchModel.Page - 1, searchModel.PageSize);
 
             //prepare grid model
             var model = new CategoryTemplateListModel().PrepareToGrid(searchModel, categoryTemplates,

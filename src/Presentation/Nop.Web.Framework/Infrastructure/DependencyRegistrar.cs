@@ -14,6 +14,7 @@ using Nop.Core.Infrastructure;
 using Nop.Core.Infrastructure.DependencyManagement;
 using Nop.Core.Redis;
 using Nop.Data;
+using Nop.Services;
 using Nop.Services.Affiliates;
 using Nop.Services.Authentication;
 using Nop.Services.Authentication.External;
@@ -122,6 +123,7 @@ namespace Nop.Web.Framework.Infrastructure
             builder.RegisterType<WebStoreContext>().As<IStoreContext>().InstancePerLifetimeScope();
 
             //services
+            builder.RegisterGeneric(typeof(Service<>)).As(typeof(IService<>)).InstancePerLifetimeScope();
             builder.RegisterType<BackInStockSubscriptionService>().As<IBackInStockSubscriptionService>().InstancePerLifetimeScope();
             builder.RegisterType<CategoryService>().As<ICategoryService>().InstancePerLifetimeScope();
             builder.RegisterType<CompareProductsService>().As<ICompareProductsService>().InstancePerLifetimeScope();
@@ -135,7 +137,6 @@ namespace Nop.Web.Framework.Infrastructure
             builder.RegisterType<CopyProductService>().As<ICopyProductService>().InstancePerLifetimeScope();
             builder.RegisterType<SpecificationAttributeService>().As<ISpecificationAttributeService>().InstancePerLifetimeScope();
             builder.RegisterType<ProductTemplateService>().As<IProductTemplateService>().InstancePerLifetimeScope();
-            builder.RegisterType<CategoryTemplateService>().As<ICategoryTemplateService>().InstancePerLifetimeScope();
             builder.RegisterType<ManufacturerTemplateService>().As<IManufacturerTemplateService>().InstancePerLifetimeScope();
             builder.RegisterType<TopicTemplateService>().As<ITopicTemplateService>().InstancePerLifetimeScope();
             builder.RegisterType<ProductTagService>().As<IProductTagService>().InstancePerLifetimeScope();
@@ -210,8 +211,7 @@ namespace Nop.Web.Framework.Infrastructure
             builder.RegisterType<ForumService>().As<IForumService>().InstancePerLifetimeScope();
             builder.RegisterType<GdprService>().As<IGdprService>().InstancePerLifetimeScope();
             builder.RegisterType<PollService>().As<IPollService>().InstancePerLifetimeScope();
-            builder.RegisterType<BlogCommentService>().As<IBlogCommentService>().InstancePerLifetimeScope();
-            builder.RegisterType<BlogPostService>().As<IBlogPostService>().InstancePerLifetimeScope();
+            builder.RegisterType<BlogService>().As<IBlogService>().InstancePerLifetimeScope();
             builder.RegisterType<TopicService>().As<ITopicService>().InstancePerLifetimeScope();
             builder.RegisterType<NewsService>().As<INewsService>().InstancePerLifetimeScope();
             builder.RegisterType<DateTimeHelper>().As<IDateTimeHelper>().InstancePerLifetimeScope();

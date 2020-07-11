@@ -29,8 +29,7 @@ namespace Nop.Web.Factories
         private readonly BlogSettings _blogSettings;
         private readonly CaptchaSettings _captchaSettings;
         private readonly CustomerSettings _customerSettings;
-        private readonly IBlogCommentService _blogCommentService;
-        private readonly IBlogPostService _blogPostService;
+        private readonly IBlogService _blogService;
         private readonly ICacheKeyService _cacheKeyService;
         private readonly ICustomerService _customerService;
         private readonly IDateTimeHelper _dateTimeHelper;
@@ -49,8 +48,7 @@ namespace Nop.Web.Factories
         public BlogModelFactory(BlogSettings blogSettings,
             CaptchaSettings captchaSettings,
             CustomerSettings customerSettings,
-            IBlogCommentService blogCommentService,
-            IBlogPostService blogPostService,
+            IBlogService blogService,
             ICacheKeyService cacheKeyService,
             ICustomerService customerService,
             IDateTimeHelper dateTimeHelper,
@@ -65,8 +63,7 @@ namespace Nop.Web.Factories
             _blogSettings = blogSettings;
             _captchaSettings = captchaSettings;
             _customerSettings = customerSettings;
-            _blogCommentService = blogCommentService;
-            _blogPostService = blogPostService;
+            _blogService = blogService;
             _cacheKeyService = cacheKeyService;
             _customerService = customerService;
             _dateTimeHelper = dateTimeHelper;
@@ -139,17 +136,17 @@ namespace Nop.Web.Factories
             model.BodyOverview = blogPost.BodyOverview;
             model.AllowComments = blogPost.AllowComments;
             model.CreatedOn = _dateTimeHelper.ConvertToUserTime(blogPost.StartDateUtc ?? blogPost.CreatedOnUtc, DateTimeKind.Utc);
-            model.Tags = _blogPostService.ParseTags(blogPost);
+            model.Tags = _blogService.ParseTags(blogPost);
             model.AddNewComment.DisplayCaptcha = _captchaSettings.Enabled && _captchaSettings.ShowOnBlogCommentPage;
 
             //number of blog comments
             var storeId = _blogSettings.ShowBlogCommentsPerStore ? _storeContext.CurrentStore.Id : 0;
             
-            model.NumberOfComments = _blogCommentService.GetBlogCommentsCount(blogPost, storeId, true);
+            model.NumberOfComments = _blogService.GetBlogCommentsCount(blogPost, storeId, true);
 
             if (prepareComments)
             {                
-                var blogComments = _blogCommentService.GetAllComments(
+                var blogComments = _blogService.GetAllComments(
                     blogPostId: blogPost.Id, 
                     approved: true,
                     storeId: storeId);
@@ -191,13 +188,13 @@ namespace Nop.Web.Factories
             IPagedList<BlogPost> blogPosts;
             if (string.IsNullOrEmpty(command.Tag))
             {
-                blogPosts = _blogPostService.GetAllBlogPosts(_storeContext.CurrentStore.Id,
+                blogPosts = _blogService.GetAllBlogPosts(_storeContext.CurrentStore.Id,
                     _workContext.WorkingLanguage.Id,
                     dateFrom, dateTo, command.PageNumber - 1, command.PageSize);
             }
             else
             {
-                blogPosts = _blogPostService.GetAllBlogPostsByTag(_storeContext.CurrentStore.Id,
+                blogPosts = _blogService.GetAllBlogPostsByTag(_storeContext.CurrentStore.Id,
                     _workContext.WorkingLanguage.Id,
                     command.Tag, command.PageNumber - 1, command.PageSize);
             }
@@ -224,7 +221,7 @@ namespace Nop.Web.Factories
             var model = new BlogPostTagListModel();
 
             //get tags
-            var tags = _blogPostService
+            var tags = _blogService
                 .GetAllBlogPostTags(_storeContext.CurrentStore.Id, _workContext.WorkingLanguage.Id)
                 .OrderByDescending(x => x.BlogPostCount)
                 .Take(_blogSettings.NumberOfTags);
@@ -250,7 +247,7 @@ namespace Nop.Web.Factories
             {
                 var model = new List<BlogPostYearModel>();
 
-                var blogPosts = _blogPostService.GetAllBlogPosts(_storeContext.CurrentStore.Id,
+                var blogPosts = _blogService.GetAllBlogPosts(_storeContext.CurrentStore.Id,
                     _workContext.WorkingLanguage.Id);
                 if (blogPosts.Any())
                 {
@@ -260,7 +257,7 @@ namespace Nop.Web.Factories
                     var first = blogPost.StartDateUtc ?? blogPost.CreatedOnUtc;
                     while (DateTime.SpecifyKind(first, DateTimeKind.Utc) <= DateTime.UtcNow.AddMonths(1))
                     {
-                        var list = _blogPostService.GetPostsByDate(blogPosts, new DateTime(first.Year, first.Month, 1),
+                        var list = _blogService.GetPostsByDate(blogPosts, new DateTime(first.Year, first.Month, 1),
                             new DateTime(first.Year, first.Month, 1).AddMonths(1).AddSeconds(-1));
                         if (list.Any())
                         {

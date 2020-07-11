@@ -119,18 +119,21 @@ namespace Nop.Services
         /// Get all entity entries
         /// </summary>
         /// <param name="func">Function to select entries</param>
-        /// <param name="cacheKey">Cache key; pass null to not cache entries</param>
+        /// <param name="cacheKeyFunc">Function to get cache key; pass null to not cache entries</param>
         /// <returns>Entity entries</returns>
-        public virtual IList<TEntity> GetAll(Func<IQueryable<TEntity>, IQueryable<TEntity>> func = null, CacheKey cacheKey = null)
+        public virtual IList<TEntity> GetAll(Func<IQueryable<TEntity>, IQueryable<TEntity>> func = null, 
+            Func<ICacheKeyService, CacheKey> cacheKeyFunc = null)
         {
             var query = _repository.Table;
             if (func != null)
                 query = func.Invoke(query);
 
-            if (cacheKey == null)
+            if (cacheKeyFunc == null)
                 return query.ToList();
 
+            //TODO: make getting a cache key more simple
             //caching
+            var cacheKey = cacheKeyFunc(EngineContext.Current.Resolve<ICacheKeyService>());
             return query.ToCachedList(cacheKey);
         }
 

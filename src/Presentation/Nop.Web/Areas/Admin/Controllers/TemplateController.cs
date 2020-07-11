@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Topics;
+using Nop.Services;
 using Nop.Services.Catalog;
 using Nop.Services.Security;
 using Nop.Services.Topics;
@@ -17,10 +18,10 @@ namespace Nop.Web.Areas.Admin.Controllers
     {
         #region Fields
 
-        private readonly ICategoryTemplateService _categoryTemplateService;
         private readonly IManufacturerTemplateService _manufacturerTemplateService;
         private readonly IPermissionService _permissionService;
         private readonly IProductTemplateService _productTemplateService;
+        private readonly IService<CategoryTemplate> _categoryTemplateService;
         private readonly ITemplateModelFactory _templateModelFactory;
         private readonly ITopicTemplateService _topicTemplateService;
 
@@ -28,17 +29,17 @@ namespace Nop.Web.Areas.Admin.Controllers
 
         #region Ctor
 
-        public TemplateController(ICategoryTemplateService categoryTemplateService,
-            IManufacturerTemplateService manufacturerTemplateService,
+        public TemplateController(IManufacturerTemplateService manufacturerTemplateService,
             IPermissionService permissionService,
             IProductTemplateService productTemplateService,
+            IService<CategoryTemplate> categoryTemplateService,
             ITemplateModelFactory templateModelFactory,
             ITopicTemplateService topicTemplateService)
         {
-            _categoryTemplateService = categoryTemplateService;
             _manufacturerTemplateService = manufacturerTemplateService;
             _permissionService = permissionService;
             _productTemplateService = productTemplateService;
+            _categoryTemplateService = categoryTemplateService;
             _templateModelFactory = templateModelFactory;
             _topicTemplateService = topicTemplateService;
         }
@@ -82,11 +83,11 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return ErrorJson(ModelState.SerializeErrors());
 
             //try to get a category template with the specified id
-            var template = _categoryTemplateService.GetCategoryTemplateById(model.Id)
+            var template = _categoryTemplateService.GetById(model.Id)
                 ?? throw new ArgumentException("No template found with the specified id");
 
             template = model.ToEntity(template);
-            _categoryTemplateService.UpdateCategoryTemplate(template);
+            _categoryTemplateService.Update(template);
 
             return new NullJsonResult();
         }
@@ -102,7 +103,7 @@ namespace Nop.Web.Areas.Admin.Controllers
 
             var template = new CategoryTemplate();
             template = model.ToEntity(template);
-            _categoryTemplateService.InsertCategoryTemplate(template);
+            _categoryTemplateService.Insert(template);
 
             return Json(new { Result = true });
         }
@@ -114,10 +115,10 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return AccessDeniedView();
 
             //try to get a category template with the specified id
-            var template = _categoryTemplateService.GetCategoryTemplateById(id)
+            var template = _categoryTemplateService.GetById(id)
                 ?? throw new ArgumentException("No template found with the specified id");
 
-            _categoryTemplateService.DeleteCategoryTemplate(template);
+            _categoryTemplateService.Delete(template);
 
             return new NullJsonResult();
         }

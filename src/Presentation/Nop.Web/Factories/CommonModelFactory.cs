@@ -59,7 +59,7 @@ namespace Nop.Web.Factories
         private readonly DisplayDefaultFooterItemSettings _displayDefaultFooterItemSettings;
         private readonly ForumSettings _forumSettings;
         private readonly IActionContextAccessor _actionContextAccessor;
-        private readonly IBlogPostService _blogPostService;
+        private readonly IBlogService _blogService;
         private readonly ICacheKeyService _cacheKeyService;
         private readonly ICategoryService _categoryService;
         private readonly ICurrencyService _currencyService;
@@ -108,7 +108,7 @@ namespace Nop.Web.Factories
             DisplayDefaultFooterItemSettings displayDefaultFooterItemSettings,
             ForumSettings forumSettings,
             IActionContextAccessor actionContextAccessor,
-            IBlogPostService blogPostService,
+            IBlogService blogService,
             ICacheKeyService cacheKeyService,
             ICategoryService categoryService,
             ICurrencyService currencyService,
@@ -153,7 +153,7 @@ namespace Nop.Web.Factories
             _displayDefaultFooterItemSettings = displayDefaultFooterItemSettings;
             _forumSettings = forumSettings;
             _actionContextAccessor = actionContextAccessor;
-            _blogPostService = blogPostService;
+            _blogService = blogService;
             _cacheKeyService = cacheKeyService;
             _categoryService = categoryService;
             _currencyService = currencyService;
@@ -629,7 +629,7 @@ namespace Nop.Web.Factories
                 if (_sitemapSettings.SitemapIncludeBlogPosts && _blogSettings.Enabled)
                 {
                     var blogPostsGroupTitle = _localizationService.GetResource("Sitemap.BlogPosts");
-                    var blogPosts = _blogPostService.GetAllBlogPosts(storeId: _storeContext.CurrentStore.Id)
+                    var blogPosts = _blogService.GetAllBlogPosts(storeId: _storeContext.CurrentStore.Id)
                         .Where(p => p.IncludeInSitemap);
 
                     model.Items.AddRange(blogPosts.Select(post => new SitemapModel.SitemapItemModel

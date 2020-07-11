@@ -8,44 +8,90 @@ using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Stores;
 using Nop.Data;
 using Nop.Services.Caching;
-using Nop.Services.Events;
 
 namespace Nop.Services.Blogs
 {
     /// <summary>
-    /// Represents the blog post service implementation
+    /// Represents the blog service implementation
     /// </summary>
-    public partial class BlogPostService : Service<BlogPost>, IBlogPostService
+    public partial class BlogService : IBlogService
     {
         #region Fields
 
         private readonly CatalogSettings _catalogSettings;
         private readonly ICacheKeyService _cacheKeyService;
+        private readonly IRepository<BlogComment> _blogCommentRepository;
         private readonly IRepository<BlogPost> _blogPostRepository;
         private readonly IRepository<StoreMapping> _storeMappingRepository;
+        private readonly IService<BlogComment> _blogCommentService;
+        private readonly IService<BlogPost> _blogPostService;
         private readonly IStaticCacheManager _staticCacheManager;
 
         #endregion
 
         #region Ctor
 
-        public BlogPostService(CatalogSettings catalogSettings,
+        public BlogService(CatalogSettings catalogSettings,
             ICacheKeyService cacheKeyService,
-            IEventPublisher eventPublisher,
+            IRepository<BlogComment> blogCommentRepository,
             IRepository<BlogPost> blogPostRepository,
             IRepository<StoreMapping> storeMappingRepository,
-            IStaticCacheManager staticCacheManager) : base(eventPublisher, blogPostRepository, staticCacheManager)
+            IService<BlogComment> blogCommentService,
+            IService<BlogPost> blogPostService,
+            IStaticCacheManager staticCacheManager)
         {
             _catalogSettings = catalogSettings;
             _cacheKeyService = cacheKeyService;
+            _blogCommentRepository = blogCommentRepository;
             _blogPostRepository = blogPostRepository;
             _storeMappingRepository = storeMappingRepository;
+            _blogCommentService = blogCommentService;
+            _blogPostService = blogPostService;
             _staticCacheManager = staticCacheManager;
         }
 
         #endregion
 
         #region Methods
+
+        #region Blog posts
+
+        /// <summary>
+        /// Insert the blog post
+        /// </summary>
+        /// <param name="blogPost">Blog post</param>
+        public virtual void InsertBlogPost(BlogPost blogPost)
+        {
+            _blogPostService.Insert(blogPost);
+        }
+
+        /// <summary>
+        /// Update the blog post
+        /// </summary>
+        /// <param name="blogPost">Blog post</param>
+        public virtual void UpdateBlogPost(BlogPost blogPost)
+        {
+            _blogPostService.Update(blogPost);
+        }
+
+        /// <summary>
+        /// Delete the blog post
+        /// </summary>
+        /// <param name="blogPost">Blog post</param>
+        public virtual void DeleteBlogPost(BlogPost blogPost)
+        {
+            _blogPostService.Delete(blogPost);
+        }
+
+        /// <summary>
+        /// Gets a blog post
+        /// </summary>
+        /// <param name="id">Blog post identifier</param>
+        /// <returns>Blog post</returns>
+        public virtual BlogPost GetBlogPostById(int id)
+        {
+            return _blogPostService.GetById(id);
+        }
 
         /// <summary>
         /// Gets all blog posts
@@ -63,7 +109,7 @@ namespace Nop.Services.Blogs
             DateTime? dateFrom = null, DateTime? dateTo = null,
             int pageIndex = 0, int pageSize = int.MaxValue, bool showHidden = false, string title = null)
         {
-            return GetAllPaged(query =>
+            return _blogPostService.GetAllPaged(query =>
             {
                 if (dateFrom.HasValue)
                     query = query.Where(b => dateFrom.Value <= (b.StartDateUtc ?? b.CreatedOnUtc));
@@ -229,6 +275,133 @@ namespace Nop.Services.Blogs
 
             return true;
         }
+
+        #endregion
+
+        #region Blog comments
+
+        /// <summary>
+        /// Insert the blog comment
+        /// </summary>
+        /// <param name="blogComment">Blog comment</param>
+        public virtual void InsertBlogComment(BlogComment blogComment)
+        {
+            _blogCommentService.Insert(blogComment);
+        }
+
+        /// <summary>
+        /// Update the blog comment
+        /// </summary>
+        /// <param name="blogComment">Blog comment</param>
+        public virtual void UpdateBlogComment(BlogComment blogComment)
+        {
+            _blogCommentService.Update(blogComment);
+        }
+
+        /// <summary>
+        /// Delete the blog comment
+        /// </summary>
+        /// <param name="blogComment">Blog comment</param>
+        public virtual void DeleteBlogComment(BlogComment blogComment)
+        {
+            _blogCommentService.Delete(blogComment);
+        }
+
+        /// <summary>
+        /// Delete blog comments
+        /// </summary>
+        /// <param name="blogComments">Blog comments</param>
+        public virtual void DeleteBlogComments(IEnumerable<BlogComment> blogComments)
+        {
+            _blogCommentService.Delete(blogComments);
+        }
+
+        /// <summary>
+        /// Gets a blog comment
+        /// </summary>
+        /// <param name="id">Blog comment identifier</param>
+        /// <returns>Blog comment</returns>
+        public virtual BlogComment GetBlogCommentById(int id)
+        {
+            return _blogCommentService.GetById(id);
+        }
+
+        /// <summary>
+        /// Gets blog comments
+        /// </summary>
+        /// <param name="ids">Blog comment identifiers</param>
+        /// <returns>Blog comment</returns>
+        public virtual IList<BlogComment> GetBlogCommentsByIds(IEnumerable<int> ids)
+        {
+            return _blogCommentService.GetByIds(ids);
+        }
+
+        /// <summary>
+        /// Gets all comments
+        /// </summary>
+        /// <param name="customerId">Customer identifier; 0 to load all records</param>
+        /// <param name="storeId">Store identifier; pass 0 to load all records</param>
+        /// <param name="blogPostId">Blog post ID; 0 or null to load all records</param>
+        /// <param name="approved">A value indicating whether to content is approved; null to load all records</param> 
+        /// <param name="fromUtc">Item creation from; null to load all records</param>
+        /// <param name="toUtc">Item creation to; null to load all records</param>
+        /// <param name="commentText">Search comment text; null to load all records</param>
+        /// <returns>Comments</returns>
+        public virtual IList<BlogComment> GetAllComments(int customerId = 0, int storeId = 0, int? blogPostId = null,
+            bool? approved = null, DateTime? fromUtc = null, DateTime? toUtc = null, string commentText = null)
+        {
+            return _blogCommentService.GetAll(query =>
+            {
+                if (approved.HasValue)
+                    query = query.Where(comment => comment.IsApproved == approved);
+
+                if (blogPostId > 0)
+                    query = query.Where(comment => comment.BlogPostId == blogPostId);
+
+                if (customerId > 0)
+                    query = query.Where(comment => comment.CustomerId == customerId);
+
+                if (storeId > 0)
+                    query = query.Where(comment => comment.StoreId == storeId);
+
+                if (fromUtc.HasValue)
+                    query = query.Where(comment => fromUtc.Value <= comment.CreatedOnUtc);
+
+                if (toUtc.HasValue)
+                    query = query.Where(comment => toUtc.Value >= comment.CreatedOnUtc);
+
+                if (!string.IsNullOrEmpty(commentText))
+                    query = query.Where(c => c.CommentText.Contains(commentText));
+
+                query = query.OrderBy(comment => comment.CreatedOnUtc);
+
+                return query;
+            });
+        }
+
+        /// <summary>
+        /// Get the count of blog comments
+        /// </summary>
+        /// <param name="blogPost">Blog post</param>
+        /// <param name="storeId">Store identifier; pass 0 to load all records</param>
+        /// <param name="isApproved">A value indicating whether to count only approved or not approved comments; pass null to get number of all comments</param>
+        /// <returns>Number of blog comments</returns>
+        public virtual int GetBlogCommentsCount(BlogPost blogPost, int storeId = 0, bool? isApproved = null)
+        {
+            var query = _blogCommentRepository.Table.Where(comment => comment.BlogPostId == blogPost.Id);
+
+            if (storeId > 0)
+                query = query.Where(comment => comment.StoreId == storeId);
+
+            if (isApproved.HasValue)
+                query = query.Where(comment => comment.IsApproved == isApproved.Value);
+
+            var cacheKey = _cacheKeyService.PrepareKeyForDefaultCache(NopBlogsDefaults.BlogCommentsNumberCacheKey, blogPost, storeId, isApproved);
+
+            return _staticCacheManager.Get(cacheKey, () => query.Count());
+        }
+
+        #endregion
 
         #endregion
     }

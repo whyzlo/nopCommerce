@@ -40,7 +40,6 @@ namespace Nop.Web.Areas.Admin.Factories
 
         private readonly ICacheKeyService _cacheKeyService;
         private readonly ICategoryService _categoryService;
-        private readonly ICategoryTemplateService _categoryTemplateService;
         private readonly ICountryService _countryService;
         private readonly ICurrencyService _currencyService;
         private readonly ICustomerActivityService _customerActivityService;
@@ -54,6 +53,7 @@ namespace Nop.Web.Areas.Admin.Factories
         private readonly IManufacturerTemplateService _manufacturerTemplateService;
         private readonly IPluginService _pluginService;
         private readonly IProductTemplateService _productTemplateService;
+        private readonly IService<CategoryTemplate> _categoryTemplateService;
         private readonly IShippingService _shippingService;
         private readonly IStateProvinceService _stateProvinceService;
         private readonly IStaticCacheManager _staticCacheManager;
@@ -68,7 +68,6 @@ namespace Nop.Web.Areas.Admin.Factories
 
         public BaseAdminModelFactory(ICacheKeyService cacheKeyService,
             ICategoryService categoryService,
-            ICategoryTemplateService categoryTemplateService,
             ICountryService countryService,
             ICurrencyService currencyService,
             ICustomerActivityService customerActivityService,
@@ -82,6 +81,7 @@ namespace Nop.Web.Areas.Admin.Factories
             IManufacturerTemplateService manufacturerTemplateService,
             IPluginService pluginService,
             IProductTemplateService productTemplateService,
+            IService<CategoryTemplate> categoryTemplateService,
             IShippingService shippingService,
             IStateProvinceService stateProvinceService,
             IStaticCacheManager staticCacheManager,
@@ -92,7 +92,6 @@ namespace Nop.Web.Areas.Admin.Factories
         {
             _cacheKeyService = cacheKeyService;
             _categoryService = categoryService;
-            _categoryTemplateService = categoryTemplateService;
             _countryService = countryService;
             _currencyService = currencyService;
             _customerActivityService = customerActivityService;
@@ -106,6 +105,7 @@ namespace Nop.Web.Areas.Admin.Factories
             _manufacturerTemplateService = manufacturerTemplateService;
             _pluginService = pluginService;
             _productTemplateService = productTemplateService;
+            _categoryTemplateService = categoryTemplateService;
             _shippingService = shippingService;
             _stateProvinceService = stateProvinceService;
             _staticCacheManager = staticCacheManager;
@@ -597,7 +597,8 @@ namespace Nop.Web.Areas.Admin.Factories
                 throw new ArgumentNullException(nameof(items));
 
             //prepare available category templates
-            var availableTemplates = _categoryTemplateService.GetAllCategoryTemplates();
+            var availableTemplates = _categoryTemplateService.GetAll(query => query.OrderByDescending(template => template.Id),
+                cacheKeyService => cacheKeyService.PrepareKeyForDefaultCache(NopCatalogDefaults.CategoryTemplatesAllCacheKey));
             foreach (var template in availableTemplates)
             {
                 items.Add(new SelectListItem { Value = template.Id.ToString(), Text = template.Name });
