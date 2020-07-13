@@ -470,7 +470,7 @@ namespace Nop.Services.Messages
             if (order == null)
                 throw new ArgumentNullException(nameof(order));
 
-            var affiliate = _affiliateService.GetById(order.AffiliateId);
+            var affiliate = _affiliateService.GetAffiliateById(order.AffiliateId);
 
             if (affiliate == null)
                 throw new ArgumentNullException(nameof(affiliate));
@@ -558,7 +558,7 @@ namespace Nop.Services.Messages
             if (order == null)
                 throw new ArgumentNullException(nameof(order));
 
-            var affiliate = _affiliateService.GetById(order.AffiliateId);
+            var affiliate = _affiliateService.GetAffiliateById(order.AffiliateId);
 
             if (affiliate == null)
                 throw new ArgumentNullException(nameof(affiliate));

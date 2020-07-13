@@ -62,7 +62,7 @@ namespace Nop.Web.Factories
         private readonly IProductService _productService;
         private readonly IProductTagService _productTagService;
         private readonly ISearchTermService _searchTermService;
-        private readonly IService<CategoryTemplate> _categoryTemplateService;
+        private readonly IService _service;
         private readonly ISpecificationAttributeService _specificationAttributeService;
         private readonly IStaticCacheManager _staticCacheManager;
         private readonly IStoreContext _storeContext;
@@ -99,7 +99,7 @@ namespace Nop.Web.Factories
             IProductService productService,
             IProductTagService productTagService,
             ISearchTermService searchTermService,
-            IService<CategoryTemplate> categoryTemplateService,
+            IService service,
             ISpecificationAttributeService specificationAttributeService,
             IStaticCacheManager staticCacheManager,
             IStoreContext storeContext,
@@ -132,7 +132,7 @@ namespace Nop.Web.Factories
             _productService = productService;
             _productTagService = productTagService;
             _searchTermService = searchTermService;
-            _categoryTemplateService = categoryTemplateService;
+            _service = service;
             _specificationAttributeService = specificationAttributeService;
             _staticCacheManager = staticCacheManager;
             _storeContext = storeContext;
@@ -501,9 +501,9 @@ namespace Nop.Web.Factories
         /// <returns>Category template view path</returns>
         public virtual string PrepareCategoryTemplateViewPath(int templateId)
         {
-            var template = _categoryTemplateService.GetById(templateId)
-                ?? _categoryTemplateService
-                    .GetAll(query => query.OrderBy(template => template.DisplayOrder).ThenBy(template => template.Id),
+            var template = _service.GetById<CategoryTemplate>(templateId)
+                ?? _service
+                    .GetAll<CategoryTemplate>(query => query.OrderBy(template => template.DisplayOrder).ThenBy(template => template.Id),
                         cacheKeyService => cacheKeyService.PrepareKeyForDefaultCache(NopCatalogDefaults.CategoryTemplatesAllCacheKey))
                     .FirstOrDefault()
                 ?? throw new Exception("No default template could be loaded");

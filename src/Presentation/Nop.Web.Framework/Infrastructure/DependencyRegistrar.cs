@@ -58,6 +58,7 @@ using Nop.Services.Vendors;
 using Nop.Web.Framework.Mvc.Routing;
 using Nop.Web.Framework.Themes;
 using Nop.Web.Framework.UI;
+using Service = Autofac.Core.Service;
 
 namespace Nop.Web.Framework.Infrastructure
 {
@@ -123,7 +124,7 @@ namespace Nop.Web.Framework.Infrastructure
             builder.RegisterType<WebStoreContext>().As<IStoreContext>().InstancePerLifetimeScope();
 
             //services
-            builder.RegisterGeneric(typeof(Service<>)).As(typeof(IService<>)).InstancePerLifetimeScope();
+            builder.RegisterType<Service>().As<IService>().InstancePerLifetimeScope();
             builder.RegisterType<BackInStockSubscriptionService>().As<IBackInStockSubscriptionService>().InstancePerLifetimeScope();
             builder.RegisterType<CategoryService>().As<ICategoryService>().InstancePerLifetimeScope();
             builder.RegisterType<CompareProductsService>().As<ICompareProductsService>().InstancePerLifetimeScope();

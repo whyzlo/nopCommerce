@@ -1108,7 +1108,7 @@ namespace Nop.Web.Areas.Admin.Factories
                 model.CreatedOn = _dateTimeHelper.ConvertToUserTime(order.CreatedOnUtc, DateTimeKind.Utc);
                 model.CustomValues = _paymentService.DeserializeCustomValues(order);
 
-                var affiliate = _affiliateService.GetById(order.AffiliateId);
+                var affiliate = _affiliateService.GetAffiliateById(order.AffiliateId);
                 if (affiliate != null)
                 {
                     model.AffiliateId = affiliate.Id;

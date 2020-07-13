@@ -21,10 +21,8 @@ namespace Nop.Services.Blogs
         private readonly CatalogSettings _catalogSettings;
         private readonly ICacheKeyService _cacheKeyService;
         private readonly IRepository<BlogComment> _blogCommentRepository;
-        private readonly IRepository<BlogPost> _blogPostRepository;
         private readonly IRepository<StoreMapping> _storeMappingRepository;
-        private readonly IService<BlogComment> _blogCommentService;
-        private readonly IService<BlogPost> _blogPostService;
+        private readonly IService _service;
         private readonly IStaticCacheManager _staticCacheManager;
 
         #endregion
@@ -34,19 +32,15 @@ namespace Nop.Services.Blogs
         public BlogService(CatalogSettings catalogSettings,
             ICacheKeyService cacheKeyService,
             IRepository<BlogComment> blogCommentRepository,
-            IRepository<BlogPost> blogPostRepository,
             IRepository<StoreMapping> storeMappingRepository,
-            IService<BlogComment> blogCommentService,
-            IService<BlogPost> blogPostService,
+            IService service,
             IStaticCacheManager staticCacheManager)
         {
             _catalogSettings = catalogSettings;
             _cacheKeyService = cacheKeyService;
             _blogCommentRepository = blogCommentRepository;
-            _blogPostRepository = blogPostRepository;
             _storeMappingRepository = storeMappingRepository;
-            _blogCommentService = blogCommentService;
-            _blogPostService = blogPostService;
+            _service = service;
             _staticCacheManager = staticCacheManager;
         }
 
@@ -62,7 +56,7 @@ namespace Nop.Services.Blogs
         /// <param name="blogPost">Blog post</param>
         public virtual void InsertBlogPost(BlogPost blogPost)
         {
-            _blogPostService.Insert(blogPost);
+            _service.Insert(blogPost);
         }
 
         /// <summary>
@@ -71,7 +65,7 @@ namespace Nop.Services.Blogs
         /// <param name="blogPost">Blog post</param>
         public virtual void UpdateBlogPost(BlogPost blogPost)
         {
-            _blogPostService.Update(blogPost);
+            _service.Update(blogPost);
         }
 
         /// <summary>
@@ -80,7 +74,7 @@ namespace Nop.Services.Blogs
         /// <param name="blogPost">Blog post</param>
         public virtual void DeleteBlogPost(BlogPost blogPost)
         {
-            _blogPostService.Delete(blogPost);
+            _service.Delete(blogPost);
         }
 
         /// <summary>
@@ -90,7 +84,7 @@ namespace Nop.Services.Blogs
         /// <returns>Blog post</returns>
         public virtual BlogPost GetBlogPostById(int id)
         {
-            return _blogPostService.GetById(id);
+            return _service.GetById<BlogPost>(id);
         }
 
         /// <summary>
@@ -109,7 +103,7 @@ namespace Nop.Services.Blogs
             DateTime? dateFrom = null, DateTime? dateTo = null,
             int pageIndex = 0, int pageSize = int.MaxValue, bool showHidden = false, string title = null)
         {
-            return _blogPostService.GetAllPaged(query =>
+            return _service.GetAllPaged<BlogPost>(query =>
             {
                 if (dateFrom.HasValue)
                     query = query.Where(b => dateFrom.Value <= (b.StartDateUtc ?? b.CreatedOnUtc));
@@ -286,7 +280,7 @@ namespace Nop.Services.Blogs
         /// <param name="blogComment">Blog comment</param>
         public virtual void InsertBlogComment(BlogComment blogComment)
         {
-            _blogCommentService.Insert(blogComment);
+            _service.Insert(blogComment);
         }
 
         /// <summary>
@@ -295,7 +289,7 @@ namespace Nop.Services.Blogs
         /// <param name="blogComment">Blog comment</param>
         public virtual void UpdateBlogComment(BlogComment blogComment)
         {
-            _blogCommentService.Update(blogComment);
+            _service.Update(blogComment);
         }
 
         /// <summary>
@@ -304,7 +298,7 @@ namespace Nop.Services.Blogs
         /// <param name="blogComment">Blog comment</param>
         public virtual void DeleteBlogComment(BlogComment blogComment)
         {
-            _blogCommentService.Delete(blogComment);
+            _service.Delete(blogComment);
         }
 
         /// <summary>
@@ -313,7 +307,7 @@ namespace Nop.Services.Blogs
         /// <param name="blogComments">Blog comments</param>
         public virtual void DeleteBlogComments(IEnumerable<BlogComment> blogComments)
         {
-            _blogCommentService.Delete(blogComments);
+            _service.Delete(blogComments.ToList());
         }
 
         /// <summary>
@@ -323,7 +317,7 @@ namespace Nop.Services.Blogs
         /// <returns>Blog comment</returns>
         public virtual BlogComment GetBlogCommentById(int id)
         {
-            return _blogCommentService.GetById(id);
+            return _service.GetById<BlogComment>(id);
         }
 
         /// <summary>
@@ -333,7 +327,7 @@ namespace Nop.Services.Blogs
         /// <returns>Blog comment</returns>
         public virtual IList<BlogComment> GetBlogCommentsByIds(IEnumerable<int> ids)
         {
-            return _blogCommentService.GetByIds(ids);
+            return _service.GetByIds<BlogComment>(ids.ToList());
         }
 
         /// <summary>
@@ -350,7 +344,7 @@ namespace Nop.Services.Blogs
         public virtual IList<BlogComment> GetAllComments(int customerId = 0, int storeId = 0, int? blogPostId = null,
             bool? approved = null, DateTime? fromUtc = null, DateTime? toUtc = null, string commentText = null)
         {
-            return _blogCommentService.GetAll(query =>
+            return _service.GetAll<BlogComment>(query =>
             {
                 if (approved.HasValue)
                     query = query.Where(comment => comment.IsApproved == approved);

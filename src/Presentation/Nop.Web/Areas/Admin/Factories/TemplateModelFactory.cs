@@ -19,7 +19,7 @@ namespace Nop.Web.Areas.Admin.Factories
 
         private readonly IManufacturerTemplateService _manufacturerTemplateService;
         private readonly IProductTemplateService _productTemplateService;
-        private readonly IService<CategoryTemplate> _categoryTemplateService;
+        private readonly IService _service;
         private readonly ITopicTemplateService _topicTemplateService;
 
         #endregion
@@ -28,12 +28,12 @@ namespace Nop.Web.Areas.Admin.Factories
 
         public TemplateModelFactory(IManufacturerTemplateService manufacturerTemplateService,
             IProductTemplateService productTemplateService,
-            IService<CategoryTemplate> categoryTemplateService,
+            IService service,
             ITopicTemplateService topicTemplateService)
         {
             _manufacturerTemplateService = manufacturerTemplateService;
             _productTemplateService = productTemplateService;
-            _categoryTemplateService = categoryTemplateService;
+            _service = service;
             _topicTemplateService = topicTemplateService;
         }
 
@@ -87,7 +87,7 @@ namespace Nop.Web.Areas.Admin.Factories
                 throw new ArgumentNullException(nameof(searchModel));
 
             //get category templates
-            var categoryTemplates = _categoryTemplateService.GetAllPaged(query => query.OrderByDescending(template => template.Id), 
+            var categoryTemplates = _service.GetAllPaged<CategoryTemplate>(query => query.OrderByDescending(template => template.Id), 
                 searchModel.Page - 1, searchModel.PageSize);
 
             //prepare grid model

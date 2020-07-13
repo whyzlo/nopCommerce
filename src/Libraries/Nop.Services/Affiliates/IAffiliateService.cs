@@ -5,16 +5,29 @@ using Nop.Core.Domain.Affiliates;
 namespace Nop.Services.Affiliates
 {
     /// <summary>
-    /// Represents an affiliate service
+    /// Affiliate service interface
     /// </summary>
-    public partial interface IAffiliateService : IService<Affiliate>
+    public partial interface IAffiliateService
     {
+        /// <summary>
+        /// Gets an affiliate by affiliate identifier
+        /// </summary>
+        /// <param name="affiliateId">Affiliate identifier</param>
+        /// <returns>Affiliate</returns>
+        Affiliate GetAffiliateById(int affiliateId);
+
         /// <summary>
         /// Gets an affiliate by friendly URL name
         /// </summary>
         /// <param name="friendlyUrlName">Friendly URL name</param>
         /// <returns>Affiliate</returns>
         Affiliate GetAffiliateByFriendlyUrlName(string friendlyUrlName);
+
+        /// <summary>
+        /// Marks affiliate as deleted 
+        /// </summary>
+        /// <param name="affiliate">Affiliate</param>
+        void DeleteAffiliate(Affiliate affiliate);
 
         /// <summary>
         /// Gets all affiliates
@@ -35,6 +48,18 @@ namespace Nop.Services.Affiliates
             DateTime? ordersCreatedFromUtc = null, DateTime? ordersCreatedToUtc = null,
             int pageIndex = 0, int pageSize = int.MaxValue,
             bool showHidden = false);
+
+        /// <summary>
+        /// Inserts an affiliate
+        /// </summary>
+        /// <param name="affiliate">Affiliate</param>
+        void InsertAffiliate(Affiliate affiliate);
+
+        /// <summary>
+        /// Updates the affiliate
+        /// </summary>
+        /// <param name="affiliate">Affiliate</param>
+        void UpdateAffiliate(Affiliate affiliate);
 
         /// <summary>
         /// Get full name

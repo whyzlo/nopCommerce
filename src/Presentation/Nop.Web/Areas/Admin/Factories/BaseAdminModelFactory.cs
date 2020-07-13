@@ -53,7 +53,7 @@ namespace Nop.Web.Areas.Admin.Factories
         private readonly IManufacturerTemplateService _manufacturerTemplateService;
         private readonly IPluginService _pluginService;
         private readonly IProductTemplateService _productTemplateService;
-        private readonly IService<CategoryTemplate> _categoryTemplateService;
+        private readonly IService _service;
         private readonly IShippingService _shippingService;
         private readonly IStateProvinceService _stateProvinceService;
         private readonly IStaticCacheManager _staticCacheManager;
@@ -81,7 +81,7 @@ namespace Nop.Web.Areas.Admin.Factories
             IManufacturerTemplateService manufacturerTemplateService,
             IPluginService pluginService,
             IProductTemplateService productTemplateService,
-            IService<CategoryTemplate> categoryTemplateService,
+            IService service,
             IShippingService shippingService,
             IStateProvinceService stateProvinceService,
             IStaticCacheManager staticCacheManager,
@@ -105,7 +105,7 @@ namespace Nop.Web.Areas.Admin.Factories
             _manufacturerTemplateService = manufacturerTemplateService;
             _pluginService = pluginService;
             _productTemplateService = productTemplateService;
-            _categoryTemplateService = categoryTemplateService;
+            _service = service;
             _shippingService = shippingService;
             _stateProvinceService = stateProvinceService;
             _staticCacheManager = staticCacheManager;
@@ -597,7 +597,7 @@ namespace Nop.Web.Areas.Admin.Factories
                 throw new ArgumentNullException(nameof(items));
 
             //prepare available category templates
-            var availableTemplates = _categoryTemplateService.GetAll(query => query.OrderByDescending(template => template.Id),
+            var availableTemplates = _service.GetAll<CategoryTemplate>(query => query.OrderByDescending(template => template.Id),
                 cacheKeyService => cacheKeyService.PrepareKeyForDefaultCache(NopCatalogDefaults.CategoryTemplatesAllCacheKey));
             foreach (var template in availableTemplates)
             {

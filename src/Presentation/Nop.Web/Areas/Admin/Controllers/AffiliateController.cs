@@ -120,7 +120,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 affiliate.FriendlyUrlName = friendlyUrlName;
                 affiliate.AddressId = address.Id;
 
-                _affiliateService.Insert(affiliate);
+                _affiliateService.InsertAffiliate(affiliate);
 
                 //activity log
                 _customerActivityService.InsertActivity("AddNewAffiliate",
@@ -144,7 +144,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return AccessDeniedView();
 
             //try to get an affiliate with the specified id
-            var affiliate = _affiliateService.GetById(id);
+            var affiliate = _affiliateService.GetAffiliateById(id);
             if (affiliate == null || affiliate.Deleted)
                 return RedirectToAction("List");
 
@@ -161,7 +161,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return AccessDeniedView();
 
             //try to get an affiliate with the specified id
-            var affiliate = _affiliateService.GetById(model.Id);
+            var affiliate = _affiliateService.GetAffiliateById(model.Id);
             if (affiliate == null || affiliate.Deleted)
                 return RedirectToAction("List");
 
@@ -185,7 +185,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 affiliate.FriendlyUrlName = friendlyUrlName;
                 affiliate.AddressId = address.Id;
 
-                _affiliateService.Update(affiliate);
+                _affiliateService.UpdateAffiliate(affiliate);
 
                 //activity log
                 _customerActivityService.InsertActivity("EditAffiliate",
@@ -214,11 +214,11 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return AccessDeniedView();
 
             //try to get an affiliate with the specified id
-            var affiliate = _affiliateService.GetById(id);
+            var affiliate = _affiliateService.GetAffiliateById(id);
             if (affiliate == null)
                 return RedirectToAction("List");
 
-            _affiliateService.Delete(affiliate);
+            _affiliateService.DeleteAffiliate(affiliate);
 
             //activity log
             _customerActivityService.InsertActivity("DeleteAffiliate",
@@ -236,7 +236,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return AccessDeniedDataTablesJson();
 
             //try to get an affiliate with the specified id
-            var affiliate = _affiliateService.GetById(searchModel.AffliateId)
+            var affiliate = _affiliateService.GetAffiliateById(searchModel.AffliateId)
                 ?? throw new ArgumentException("No affiliate found with the specified id");
 
             //prepare model
@@ -252,7 +252,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return AccessDeniedDataTablesJson();
 
             //try to get an affiliate with the specified id
-            var affiliate = _affiliateService.GetById(searchModel.AffliateId)
+            var affiliate = _affiliateService.GetAffiliateById(searchModel.AffliateId)
                 ?? throw new ArgumentException("No affiliate found with the specified id");
 
             //prepare model

@@ -21,7 +21,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         private readonly IManufacturerTemplateService _manufacturerTemplateService;
         private readonly IPermissionService _permissionService;
         private readonly IProductTemplateService _productTemplateService;
-        private readonly IService<CategoryTemplate> _categoryTemplateService;
+        private readonly IService _service;
         private readonly ITemplateModelFactory _templateModelFactory;
         private readonly ITopicTemplateService _topicTemplateService;
 
@@ -32,14 +32,14 @@ namespace Nop.Web.Areas.Admin.Controllers
         public TemplateController(IManufacturerTemplateService manufacturerTemplateService,
             IPermissionService permissionService,
             IProductTemplateService productTemplateService,
-            IService<CategoryTemplate> categoryTemplateService,
+            IService service,
             ITemplateModelFactory templateModelFactory,
             ITopicTemplateService topicTemplateService)
         {
             _manufacturerTemplateService = manufacturerTemplateService;
             _permissionService = permissionService;
             _productTemplateService = productTemplateService;
-            _categoryTemplateService = categoryTemplateService;
+            _service = service;
             _templateModelFactory = templateModelFactory;
             _topicTemplateService = topicTemplateService;
         }
@@ -83,11 +83,11 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return ErrorJson(ModelState.SerializeErrors());
 
             //try to get a category template with the specified id
-            var template = _categoryTemplateService.GetById(model.Id)
+            var template = _service.GetById<CategoryTemplate>(model.Id)
                 ?? throw new ArgumentException("No template found with the specified id");
 
             template = model.ToEntity(template);
-            _categoryTemplateService.Update(template);
+            _service.Update(template);
 
             return new NullJsonResult();
         }
@@ -103,7 +103,7 @@ namespace Nop.Web.Areas.Admin.Controllers
 
             var template = new CategoryTemplate();
             template = model.ToEntity(template);
-            _categoryTemplateService.Insert(template);
+            _service.Insert(template);
 
             return Json(new { Result = true });
         }
@@ -115,10 +115,10 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return AccessDeniedView();
 
             //try to get a category template with the specified id
-            var template = _categoryTemplateService.GetById(id)
+            var template = _service.GetById<CategoryTemplate>(id)
                 ?? throw new ArgumentException("No template found with the specified id");
 
-            _categoryTemplateService.Delete(template);
+            _service.Delete(template);
 
             return new NullJsonResult();
         }

@@ -1,22 +1,20 @@
 ﻿using System;
 using System.Linq;
 using Nop.Core;
-using Nop.Core.Caching;
 using Nop.Core.Domain.Affiliates;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Seo;
 using Nop.Data;
 using Nop.Services.Common;
-using Nop.Services.Events;
 using Nop.Services.Seo;
 
 namespace Nop.Services.Affiliates
 {
     /// <summary>
-    /// Represents the affiliate service implementation
+    /// Affiliate service
     /// </summary>
-    public partial class AffiliateService : Service<Affiliate>, IAffiliateService
+    public partial class AffiliateService : IAffiliateService
     {
         #region Fields
 
@@ -24,6 +22,7 @@ namespace Nop.Services.Affiliates
         private readonly IRepository<Address> _addressRepository;
         private readonly IRepository<Affiliate> _affiliateRepository;
         private readonly IRepository<Order> _orderRepository;
+        private readonly IService _service;
         private readonly IUrlRecordService _urlRecordService;
         private readonly IWebHelper _webHelper;
         private readonly SeoSettings _seoSettings;
@@ -33,19 +32,19 @@ namespace Nop.Services.Affiliates
         #region Ctor
 
         public AffiliateService(IAddressService addressService,
-            IEventPublisher eventPublisher,
             IRepository<Address> addressRepository,
             IRepository<Affiliate> affiliateRepository,
             IRepository<Order> orderRepository,
-            IStaticCacheManager staticCacheManager,
+            IService service,
             IUrlRecordService urlRecordService,
             IWebHelper webHelper,
-            SeoSettings seoSettings) : base(eventPublisher, affiliateRepository, staticCacheManager)
+            SeoSettings seoSettings)
         {
             _addressService = addressService;
             _addressRepository = addressRepository;
             _affiliateRepository = affiliateRepository;
             _orderRepository = orderRepository;
+            _service = service;
             _urlRecordService = urlRecordService;
             _webHelper = webHelper;
             _seoSettings = seoSettings;
@@ -54,6 +53,16 @@ namespace Nop.Services.Affiliates
         #endregion
 
         #region Methods
+
+        /// <summary>
+        /// Gets an affiliate by affiliate identifier
+        /// </summary>
+        /// <param name="affiliateId">Affiliate identifier</param>
+        /// <returns>Affiliate</returns>
+        public virtual Affiliate GetAffiliateById(int affiliateId)
+        {
+            return _service.GetById<Affiliate>(affiliateId);
+        }
 
         /// <summary>
         /// Gets an affiliate by friendly URL name
@@ -71,6 +80,15 @@ namespace Nop.Services.Affiliates
                         select a;
             var affiliate = query.FirstOrDefault();
             return affiliate;
+        }
+
+        /// <summary>
+        /// Marks affiliate as deleted 
+        /// </summary>
+        /// <param name="affiliate">Affiliate</param>
+        public virtual void DeleteAffiliate(Affiliate affiliate)
+        {
+            _service.Delete(affiliate);
         }
 
         /// <summary>
@@ -93,30 +111,25 @@ namespace Nop.Services.Affiliates
             int pageIndex = 0, int pageSize = int.MaxValue,
             bool showHidden = false)
         {
-            return GetAllPaged(query =>
+            var affiliates = _service.GetAllPaged<Affiliate>(query =>
             {
                 if (!string.IsNullOrWhiteSpace(friendlyUrlName))
                     query = query.Where(a => a.FriendlyUrlName.Contains(friendlyUrlName));
 
                 if (!string.IsNullOrWhiteSpace(firstName))
-                {
                     query = from aff in query
-                            join addr in _addressRepository.Table on aff.AddressId equals addr.Id
-                            where addr.FirstName.Contains(firstName)
-                            select aff;
-                }
+                        join addr in _addressRepository.Table on aff.AddressId equals addr.Id
+                        where addr.FirstName.Contains(firstName)
+                        select aff;
 
                 if (!string.IsNullOrWhiteSpace(lastName))
-                {
                     query = from aff in query
-                            join addr in _addressRepository.Table on aff.AddressId equals addr.Id
-                            where addr.LastName.Contains(lastName)
-                            select aff;
-                }
+                        join addr in _addressRepository.Table on aff.AddressId equals addr.Id
+                        where addr.LastName.Contains(lastName)
+                        select aff;
 
                 if (!showHidden)
                     query = query.Where(a => a.Active);
-
                 query = query.Where(a => !a.Deleted);
 
                 if (loadOnlyWithOrders)
@@ -129,14 +142,34 @@ namespace Nop.Services.Affiliates
                     ordersQuery = ordersQuery.Where(o => !o.Deleted);
 
                     query = from a in query
-                            join o in ordersQuery on a.Id equals o.AffiliateId
-                            select a;
+                        join o in ordersQuery on a.Id equals o.AffiliateId
+                        select a;
                 }
 
                 query = query.Distinct().OrderByDescending(a => a.Id);
 
                 return query;
-            }, pageIndex, pageSize);
+            });
+
+            return affiliates;
+        }
+
+        /// <summary>
+        /// Inserts an affiliate
+        /// </summary>
+        /// <param name="affiliate">Affiliate</param>
+        public virtual void InsertAffiliate(Affiliate affiliate)
+        {
+            _service.Insert(affiliate);
+        }
+
+        /// <summary>
+        /// Updates the affiliate
+        /// </summary>
+        /// <param name="affiliate">Affiliate</param>
+        public virtual void UpdateAffiliate(Affiliate affiliate)
+        {
+            _service.Update(affiliate);
         }
 
         /// <summary>
