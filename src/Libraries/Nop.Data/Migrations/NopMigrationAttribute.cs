@@ -9,14 +9,19 @@ namespace Nop.Data.Migrations
     /// </summary>
     public partial class NopMigrationAttribute : MigrationAttribute
     {
-        private static readonly string[] _dateFormats = { "yyyy-MM-dd HH:mm:ss", "yyyy.MM.dd HH:mm:ss", "yyyy/MM/dd HH:mm:ss", "yyyy-MM-dd HH:mm:ss:fffffff", "yyyy.MM.dd HH:mm:ss:fffffff", "yyyy/MM/dd HH:mm:ss:fffffff" };
-
-        private static long GetMigrationVersion(string nopVersion, MigrationType migrationType)
+        private static long GetVersion(string dateTime)
         {
-            long version = int.MaxValue + Math.Abs(nopVersion.GetHashCode()) +
-                           Math.Abs(migrationType.ToString().GetHashCode());
+            return DateTime.ParseExact(dateTime, NopMigrationDefaults.DateFormats, CultureInfo.InvariantCulture).Ticks;
+        }
 
-            return version;
+        private static long GetVersion(string dateTime, UpdateMigrationType migrationType)
+        {
+            return GetVersion(dateTime) + (int)migrationType;
+        }
+        
+        private static string GetDescription(string nopVersion, UpdateMigrationType migrationType)
+        {
+            return string.Format(NopMigrationDefaults.UpdateMigrationDescription, nopVersion, migrationType.ToString());
         }
 
         /// <summary>
@@ -24,7 +29,7 @@ namespace Nop.Data.Migrations
         /// </summary>
         /// <param name="dateTime">The migration date time string to convert on version</param>
         public NopMigrationAttribute(string dateTime) :
-            base(DateTime.ParseExact(dateTime, _dateFormats, CultureInfo.InvariantCulture).Ticks, null)
+            base(GetVersion(dateTime), null)
         {
         }
 
@@ -34,28 +39,18 @@ namespace Nop.Data.Migrations
         /// <param name="dateTime">The migration date time string to convert on version</param>
         /// <param name="description">The migration description</param>
         public NopMigrationAttribute(string dateTime, string description) :
-            base(DateTime.ParseExact(dateTime, _dateFormats, CultureInfo.InvariantCulture).Ticks, description)
+            base(GetVersion(dateTime), description)
         {
         }
 
         /// <summary>
         /// Initializes a new instance of the NopMigrationAttribute class
         /// </summary>
-        /// <param name="nopVersion">The nopCommerce full version number</param>
+        /// <param name="dateTime">The migration date time string to convert on version</param>
+        /// <param name="nopVersion">nopCommerce full version</param>
         /// <param name="migrationType">The migration type</param>
-        public NopMigrationAttribute(string nopVersion, MigrationType migrationType) :
-            base(GetMigrationVersion(nopVersion, migrationType), null)
-        {
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the NopMigrationAttribute class
-        /// </summary>
-        /// <param name="nopVersion">The nopCommerce full version number</param>
-        /// <param name="migrationType">The migration type</param>
-        /// <param name="description">The migration description</param>
-        public NopMigrationAttribute(string nopVersion, MigrationType migrationType, string description) :
-            base(GetMigrationVersion(nopVersion, migrationType), description)
+        public NopMigrationAttribute(string dateTime, string nopVersion, UpdateMigrationType migrationType) :
+            base(GetVersion(dateTime, migrationType), GetDescription(nopVersion, migrationType))
         {
         }
     }

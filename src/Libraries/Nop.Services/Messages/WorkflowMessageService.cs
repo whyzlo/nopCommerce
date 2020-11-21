@@ -13,11 +13,11 @@ using Nop.Core.Domain.News;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Shipping;
 using Nop.Core.Domain.Vendors;
+using Nop.Core.Events;
 using Nop.Services.Affiliates;
 using Nop.Services.Catalog;
 using Nop.Services.Common;
 using Nop.Services.Customers;
-using Nop.Services.Events;
 using Nop.Services.Localization;
 using Nop.Services.Orders;
 using Nop.Services.Stores;
@@ -2304,6 +2304,9 @@ namespace Nop.Services.Messages
 
             //event notification
             _eventPublisher.MessageTokensAdded(messageTemplate, tokens);
+
+            //force sending
+            messageTemplate.DelayBeforeSend = null;
 
             return SendNotification(messageTemplate, emailAccount, languageId, tokens, sendToEmail, null);
         }

@@ -14,7 +14,6 @@ using Nop.Services.Payments;
 using Nop.Services.Shipping;
 using Nop.Web.Factories;
 using Nop.Web.Framework.Controllers;
-using Nop.Web.Framework.Mvc.Filters;
 
 namespace Nop.Web.Controllers
 {
@@ -65,7 +64,6 @@ namespace Nop.Web.Controllers
         #region Methods
 
         //My account / Orders
-        [HttpsRequirement]
         public virtual IActionResult CustomerOrders()
         {
             if (!_customerService.IsRegistered(_workContext.CurrentCustomer))
@@ -88,7 +86,7 @@ namespace Nop.Web.Controllers
             var recurringPaymentId = 0;
             foreach (var formValue in form.Keys)
                 if (formValue.StartsWith("cancelRecurringPayment", StringComparison.InvariantCultureIgnoreCase))
-                    recurringPaymentId = Convert.ToInt32(formValue.Substring("cancelRecurringPayment".Length));
+                    recurringPaymentId = Convert.ToInt32(formValue["cancelRecurringPayment".Length..]);
 
             var recurringPayment = _orderService.GetRecurringPaymentById(recurringPaymentId);
             if (recurringPayment == null)
@@ -121,7 +119,7 @@ namespace Nop.Web.Controllers
             //get recurring payment identifier
             var recurringPaymentId = 0;
             if (!form.Keys.Any(formValue => formValue.StartsWith("retryLastPayment", StringComparison.InvariantCultureIgnoreCase) &&
-                int.TryParse(formValue.Substring(formValue.IndexOf('_') + 1), out recurringPaymentId)))
+                int.TryParse(formValue[(formValue.IndexOf('_') + 1)..], out recurringPaymentId)))
             {
                 return RedirectToRoute("CustomerOrders");
             }
@@ -141,7 +139,6 @@ namespace Nop.Web.Controllers
         }
 
         //My account / Reward points
-        [HttpsRequirement]
         public virtual IActionResult CustomerRewardPoints(int? pageNumber)
         {
             if (!_customerService.IsRegistered(_workContext.CurrentCustomer))
@@ -155,7 +152,6 @@ namespace Nop.Web.Controllers
         }
 
         //My account / Order details page
-        [HttpsRequirement]
         public virtual IActionResult Details(int orderId)
         {
             var order = _orderService.GetOrderById(orderId);
@@ -167,7 +163,6 @@ namespace Nop.Web.Controllers
         }
 
         //My account / Order details page / Print
-        [HttpsRequirement]
         public virtual IActionResult PrintOrderDetails(int orderId)
         {
             var order = _orderService.GetOrderById(orderId);
@@ -240,7 +235,6 @@ namespace Nop.Web.Controllers
         }
 
         //My account / Order details page / Shipment details page
-        [HttpsRequirement]
         public virtual IActionResult ShipmentDetails(int shipmentId)
         {
             var shipment = _shipmentService.GetShipmentById(shipmentId);

@@ -15,7 +15,6 @@ using Nop.Core.Domain.Security;
 using Nop.Core.Domain.Shipping;
 using Nop.Core.Html;
 using Nop.Core.Infrastructure;
-using Nop.Services.Caching;
 using Nop.Services.Catalog;
 using Nop.Services.Common;
 using Nop.Services.Customers;
@@ -47,7 +46,6 @@ namespace Nop.Web.Controllers
 
         private readonly CaptchaSettings _captchaSettings;
         private readonly CustomerSettings _customerSettings;
-        private readonly ICacheKeyService _cacheKeyService;
         private readonly ICheckoutAttributeParser _checkoutAttributeParser;
         private readonly ICheckoutAttributeService _checkoutAttributeService;
         private readonly ICurrencyService _currencyService;
@@ -86,7 +84,6 @@ namespace Nop.Web.Controllers
 
         public ShoppingCartController(CaptchaSettings captchaSettings,
             CustomerSettings customerSettings,
-            ICacheKeyService cacheKeyService,
             ICheckoutAttributeParser checkoutAttributeParser,
             ICheckoutAttributeService checkoutAttributeService,
             ICurrencyService currencyService,
@@ -121,7 +118,6 @@ namespace Nop.Web.Controllers
         {
             _captchaSettings = captchaSettings;
             _customerSettings = customerSettings;
-            _cacheKeyService = cacheKeyService;
             _checkoutAttributeParser = checkoutAttributeParser;
             _checkoutAttributeService = checkoutAttributeService;
             _currencyService = currencyService;
@@ -885,7 +881,7 @@ namespace Nop.Web.Controllers
 
                 if (pictureId > 0)
                 {
-                    var productAttributePictureCacheKey = _cacheKeyService.PrepareKeyForDefaultCache(NopModelCacheDefaults.ProductAttributePictureModelKey, 
+                    var productAttributePictureCacheKey = _staticCacheManager.PrepareKeyForDefaultCache(NopModelCacheDefaults.ProductAttributePictureModelKey, 
                         pictureId, _webHelper.IsCurrentConnectionSecured(), _storeContext.CurrentStore);
                     var pictureModel = _staticCacheManager.Get(productAttributePictureCacheKey, () =>
                     {
@@ -1133,7 +1129,6 @@ namespace Nop.Web.Controllers
             });
         }
 
-        [HttpsRequirement]
         public virtual IActionResult Cart()
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.EnableShoppingCart))
@@ -1391,8 +1386,8 @@ namespace Nop.Web.Controllers
 
             if (errors.Count > 0)
                 return Json(new { 
-                    success = false,
-                    errors = errors
+                    Success = false,
+                    Errors = errors
                 });
 
             var cart = _shoppingCartService.GetShoppingCart(_workContext.CurrentCustomer, ShoppingCartType.ShoppingCart, _storeContext.CurrentStore.Id);
@@ -1401,11 +1396,7 @@ namespace Nop.Web.Controllers
 
             var result = _shoppingCartModelFactory.PrepareEstimateShippingResultModel(cart, model.CountryId, model.StateProvinceId, model.ZipPostalCode, true);
 
-            return Json(new
-            {
-                success = true,
-                result = result
-            });
+            return Json(result);
         }
 
         [HttpPost, ActionName("Cart")]
@@ -1418,7 +1409,7 @@ namespace Nop.Web.Controllers
             var discountId = 0;
             foreach (var formValue in form.Keys)
                 if (formValue.StartsWith("removediscount-", StringComparison.InvariantCultureIgnoreCase))
-                    discountId = Convert.ToInt32(formValue.Substring("removediscount-".Length));
+                    discountId = Convert.ToInt32(formValue["removediscount-".Length..]);
             var discount = _discountService.GetDiscountById(discountId);
             if (discount != null)
                 _customerService.RemoveDiscountCouponCode(_workContext.CurrentCustomer, discount.CouponCode);
@@ -1439,7 +1430,7 @@ namespace Nop.Web.Controllers
             var giftCardId = 0;
             foreach (var formValue in form.Keys)
                 if (formValue.StartsWith("removegiftcard-", StringComparison.InvariantCultureIgnoreCase))
-                    giftCardId = Convert.ToInt32(formValue.Substring("removegiftcard-".Length));
+                    giftCardId = Convert.ToInt32(formValue["removegiftcard-".Length..]);
             var gc = _giftCardService.GetGiftCardById(giftCardId);
             if (gc != null)
                 _customerService.RemoveGiftCardCouponCode(_workContext.CurrentCustomer, gc.GiftCardCouponCode);
@@ -1454,7 +1445,6 @@ namespace Nop.Web.Controllers
 
         #region Wishlist
 
-        [HttpsRequirement]
         public virtual IActionResult Wishlist(Guid? customerGuid)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.EnableWishlist))
@@ -1612,7 +1602,6 @@ namespace Nop.Web.Controllers
             return View(model);
         }
 
-        [HttpsRequirement]
         public virtual IActionResult EmailWishlist()
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.EnableWishlist) || !_shoppingCartSettings.EmailWishlistEnabled)

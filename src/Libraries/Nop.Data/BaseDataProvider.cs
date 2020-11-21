@@ -10,7 +10,7 @@ using LinqToDB.DataProvider;
 using LinqToDB.Mapping;
 using LinqToDB.Tools;
 using Nop.Core;
-using Nop.Core.Domain;
+using Nop.Core.Configuration;
 using Nop.Core.Infrastructure;
 using Nop.Data.Mapping;
 using StackExchange.Profiling;
@@ -21,6 +21,35 @@ namespace Nop.Data
     public abstract class BaseDataProvider
     {
         #region Utils
+
+        /// <summary>
+        /// Gets an additional mapping schema
+        /// </summary>
+        private MappingSchema GetMappingSchema()
+        {
+            if (Singleton<MappingSchema>.Instance is null)
+            {
+                Singleton<MappingSchema>.Instance = new MappingSchema(ConfigurationName)
+                {
+                    MetadataReader = new FluentMigratorMetadataReader()
+                };
+            }
+
+            if (MiniProfillerEnabled)
+            {
+                var mpMappingSchema = new MappingSchema(new[] { Singleton<MappingSchema>.Instance });
+
+                mpMappingSchema.SetConvertExpression<ProfiledDbConnection, IDbConnection>(db => db.WrappedConnection);
+                mpMappingSchema.SetConvertExpression<ProfiledDbDataReader, IDataReader>(db => db.WrappedReader);
+                mpMappingSchema.SetConvertExpression<ProfiledDbTransaction, IDbTransaction>(db => db.WrappedTransaction);
+                mpMappingSchema.SetConvertExpression<ProfiledDbCommand, IDbCommand>(db => db.InternalCommand);
+
+                return mpMappingSchema;
+            }
+
+            return Singleton<MappingSchema>.Instance;
+
+        }
 
         private void UpdateParameterValue(DataConnection dataConnection, DataParameter parameter)
         {
@@ -75,7 +104,7 @@ namespace Nop.Data
             if (dataProvider is null)
                 throw new ArgumentNullException(nameof(dataProvider));
 
-            var dataContext = new DataConnection(dataProvider, CreateDbConnection(), AdditionalSchema)
+            var dataContext = new DataConnection(dataProvider, CreateDbConnection(), GetMappingSchema())
             {
                 CommandTimeout = DataSettingsManager.SQLCommandTimeout
             };
@@ -96,14 +125,20 @@ namespace Nop.Data
         {
             var dbConnection = GetInternalDbConnection(!string.IsNullOrEmpty(connectionString) ? connectionString : CurrentConnectionString);
 
-            if (!DataSettingsManager.DatabaseIsInstalled)
-                return dbConnection;
+            return MiniProfillerEnabled ? new ProfiledDbConnection((DbConnection)dbConnection, MiniProfiler.Current) : dbConnection;
+        }
 
-            var storeSettings = EngineContext.Current.Resolve<StoreInformationSettings>();
-
-            LinqToDB.Common.Configuration.AvoidSpecificDataProviderAPI = storeSettings.DisplayMiniProfilerInPublicStore;
-
-            return storeSettings.DisplayMiniProfilerInPublicStore ? new ProfiledDbConnection((DbConnection)dbConnection, MiniProfiler.Current) : dbConnection;
+        /// <summary>
+        /// Creates a new temporary storage and populate it using data from provided query
+        /// </summary>
+        /// <param name="storeKey">Name of temporary storage</param>
+        /// <param name="query">Query to get records to populate created storage with initial data</param>
+        /// <typeparam name="TItem">Storage record mapping class</typeparam>
+        /// <returns>IQueryable instance of temporary storage</returns>
+        public virtual ITempDataStorage<TItem> CreateTempDataStorage<TItem>(string storeKey, IQueryable<TItem> query)
+            where TItem : class
+        {
+            return new TempSqlDataStorage<TItem>(storeKey, query, CreateDataConnection);
         }
 
         /// <summary>
@@ -113,7 +148,7 @@ namespace Nop.Data
         /// <returns>Mapping descriptor</returns>
         public EntityDescriptor GetEntityDescriptor<TEntity>() where TEntity : BaseEntity
         {
-            return AdditionalSchema?.GetEntityDescriptor(typeof(TEntity));
+            return GetMappingSchema()?.GetEntityDescriptor(typeof(TEntity));
         }
 
         /// <summary>
@@ -124,7 +159,7 @@ namespace Nop.Data
         /// <returns>Queryable source</returns>
         public virtual ITable<TEntity> GetTable<TEntity>() where TEntity : BaseEntity
         {
-            return new DataContext(LinqToDbDataProvider, CurrentConnectionString) { MappingSchema = AdditionalSchema }
+            return new DataContext(LinqToDbDataProvider, CurrentConnectionString) { MappingSchema = GetMappingSchema() }
                 .GetTable<TEntity>();
         }
 
@@ -134,7 +169,7 @@ namespace Nop.Data
         /// <param name="entity"></param>
         /// <typeparam name="TEntity"></typeparam>
         /// <returns>Inserted entity</returns>
-        public TEntity InsertEntity<TEntity>(TEntity entity) where TEntity : BaseEntity
+        public virtual TEntity InsertEntity<TEntity>(TEntity entity) where TEntity : BaseEntity
         {
             using var dataContext = CreateDataConnection();
             entity.Id = dataContext.InsertWithInt32Identity(entity);
@@ -147,7 +182,7 @@ namespace Nop.Data
         /// </summary>
         /// <param name="entity">Entity with data to update</param>
         /// <typeparam name="TEntity">Entity type</typeparam>
-        public void UpdateEntity<TEntity>(TEntity entity) where TEntity : BaseEntity
+        public virtual void UpdateEntity<TEntity>(TEntity entity) where TEntity : BaseEntity
         {
             using var dataContext = CreateDataConnection();
             dataContext.Update(entity);
@@ -159,7 +194,7 @@ namespace Nop.Data
         /// </summary>
         /// <param name="entity">Entity for delete operation</param>
         /// <typeparam name="TEntity">Entity type</typeparam>
-        public void DeleteEntity<TEntity>(TEntity entity) where TEntity : BaseEntity
+        public virtual void DeleteEntity<TEntity>(TEntity entity) where TEntity : BaseEntity
         {
             using var dataContext = CreateDataConnection();
             dataContext.Delete(entity);
@@ -170,7 +205,7 @@ namespace Nop.Data
         /// </summary>
         /// <param name="entities">Entities for delete operation</param>
         /// <typeparam name="TEntity">Entity type</typeparam>
-        public void BulkDeleteEntities<TEntity>(IList<TEntity> entities) where TEntity : BaseEntity
+        public virtual void BulkDeleteEntities<TEntity>(IList<TEntity> entities) where TEntity : BaseEntity
         {
             using var dataContext = CreateDataConnection();
             if (entities.All(entity => entity.Id == 0))
@@ -187,10 +222,11 @@ namespace Nop.Data
         /// </summary>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <typeparam name="TEntity">Entity type</typeparam>
-        public void BulkDeleteEntities<TEntity>(Expression<Func<TEntity, bool>> predicate) where TEntity : BaseEntity
+        /// <returns>Number of deleted records</returns>
+        public virtual int BulkDeleteEntities<TEntity>(Expression<Func<TEntity, bool>> predicate) where TEntity : BaseEntity
         {
             using var dataContext = CreateDataConnection();
-            dataContext.GetTable<TEntity>()
+            return dataContext.GetTable<TEntity>()
                 .Where(predicate)
                 .Delete();
         }
@@ -200,7 +236,7 @@ namespace Nop.Data
         /// </summary>
         /// <param name="entities">Entities for insert operation</param>
         /// <typeparam name="TEntity">Entity type</typeparam>
-        public void BulkInsertEntities<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity
+        public virtual void BulkInsertEntities<TEntity>(IEnumerable<TEntity> entities) where TEntity : BaseEntity
         {
             using var dataContext = CreateDataConnection(LinqToDbDataProvider);
             dataContext.BulkCopy(new BulkCopyOptions(), entities.RetrieveIdentity(dataContext));
@@ -212,7 +248,7 @@ namespace Nop.Data
         /// <param name="sqlStatement">Command text</param>
         /// <param name="dataParameters">Command parameters</param>
         /// <returns>Number of records, affected by command execution.</returns>
-        public int ExecuteNonQuery(string sqlStatement, params DataParameter[] dataParameters)
+        public virtual int ExecuteNonQuery(string sqlStatement, params DataParameter[] dataParameters)
         {
             using var dataContext = CreateDataConnection();
             var command = new CommandInfo(dataContext, sqlStatement, dataParameters);
@@ -231,7 +267,7 @@ namespace Nop.Data
         /// <param name="procedureName">Procedure name</param>
         /// <param name="parameters">Command parameters</param>
         /// <returns>Resulting value</returns>
-        public T ExecuteStoredProcedure<T>(string procedureName, params DataParameter[] parameters)
+        public virtual T ExecuteStoredProcedure<T>(string procedureName, params DataParameter[] parameters)
         {
             using var dataContext = CreateDataConnection();
             var command = new CommandInfo(dataContext, procedureName, parameters);
@@ -249,7 +285,7 @@ namespace Nop.Data
         /// <param name="procedureName">Procedure name</param>
         /// <param name="parameters">Command parameters</param>
         /// <returns>Number of records, affected by command execution.</returns>
-        public int ExecuteStoredProcedure(string procedureName, params DataParameter[] parameters)
+        public virtual int ExecuteStoredProcedure(string procedureName, params DataParameter[] parameters)
         {
             using var dataContext = CreateDataConnection();
             var command = new CommandInfo(dataContext, procedureName, parameters);
@@ -268,7 +304,7 @@ namespace Nop.Data
         /// <param name="procedureName">Procedure name</param>
         /// <param name="parameters">Command parameters</param>
         /// <returns>Returns collection of query result records</returns>
-        public IList<T> QueryProc<T>(string procedureName, params DataParameter[] parameters)
+        public virtual IList<T> QueryProc<T>(string procedureName, params DataParameter[] parameters)
         {
             using var dataContext = CreateDataConnection();
             var command = new CommandInfo(dataContext, procedureName, parameters);
@@ -284,7 +320,7 @@ namespace Nop.Data
         /// <param name="sql">SQL command text</param>
         /// <param name="parameters">Parameters to execute the SQL command</param>
         /// <returns>Collection of values of specified type</returns>
-        public IList<T> Query<T>(string sql, params DataParameter[] parameters)
+        public virtual IList<T> Query<T>(string sql, params DataParameter[] parameters)
         {
             using var dataContext = CreateDataConnection();
             return dataContext.Query<T>(sql, parameters)?.ToList() ?? new List<T>();
@@ -299,22 +335,11 @@ namespace Nop.Data
         /// </summary>
         protected abstract IDataProvider LinqToDbDataProvider { get; }
 
+
         /// <summary>
-        /// Additional mapping schema
+        /// Gets or sets a value that indicates whether should use MiniProfiler for the current connection
         /// </summary>
-        protected MappingSchema AdditionalSchema
-        {
-            get
-            {
-                if (!(Singleton<MappingSchema>.Instance is null))
-                    return Singleton<MappingSchema>.Instance;
-
-                Singleton<MappingSchema>.Instance =
-                    new MappingSchema(ConfigurationName) { MetadataReader = new FluentMigratorMetadataReader() };
-
-                return Singleton<MappingSchema>.Instance;
-            }
-        }
+        protected bool MiniProfillerEnabled => EngineContext.Current.Resolve<AppSettings>().CommonConfig.MiniProfilerEnabled;
 
         /// <summary>
         /// Database connection string

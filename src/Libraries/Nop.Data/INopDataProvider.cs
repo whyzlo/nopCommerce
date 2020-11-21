@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Linq.Expressions;
 using LinqToDB;
 using LinqToDB.Data;
@@ -29,6 +30,16 @@ namespace Nop.Data
         /// <param name="connectionString">Connection string</param>
         /// <returns>Connection to a database</returns>
         IDbConnection CreateDbConnection(string connectionString);
+
+        /// <summary>
+        /// Creates a new temporary storage and populate it using data from provided query
+        /// </summary>
+        /// <param name="storeKey">Name of temporary storage</param>
+        /// <param name="query">Query to get records to populate created storage with initial data</param>
+        /// <typeparam name="TItem">Storage record mapping class</typeparam>
+        /// <returns>IQueryable instance of temporary storage</returns>
+        ITempDataStorage<TItem> CreateTempDataStorage<TItem>(string storageKey, IQueryable<TItem> query)
+            where TItem : class;
 
         /// <summary>
         /// Initialize database
@@ -71,7 +82,8 @@ namespace Nop.Data
         /// </summary>
         /// <param name="predicate">A function to test each element for a condition.</param>
         /// <typeparam name="TEntity">Entity type</typeparam>
-        void BulkDeleteEntities<TEntity>(Expression<Func<TEntity, bool>> predicate) where TEntity : BaseEntity;
+        /// <returns>Number of deleted records</returns>
+        int BulkDeleteEntities<TEntity>(Expression<Func<TEntity, bool>> predicate) where TEntity : BaseEntity;
 
         /// <summary>
         /// Performs bulk insert entities operation
@@ -145,9 +157,9 @@ namespace Nop.Data
         /// <summary>
         /// Set table identity (is supported)
         /// </summary>
-        /// <typeparam name="T">Entity</typeparam>
+        /// <typeparam name="TEntity">Entity</typeparam>
         /// <param name="ident">Identity value</param>
-        void SetTableIdent<T>(int ident) where T : BaseEntity;
+        void SetTableIdent<TEntity>(int ident) where TEntity : BaseEntity;
 
         /// <summary>
         /// Returns mapped entity descriptor
@@ -155,7 +167,7 @@ namespace Nop.Data
         /// <typeparam name="TEntity">Type of entity</typeparam>
         /// <returns>Mapped entity descriptor</returns>
         EntityDescriptor GetEntityDescriptor<TEntity>() where TEntity : BaseEntity;
-        
+
         /// <summary>
         /// Executes command using System.Data.CommandType.StoredProcedure command type and
         /// returns results as collection of values of specified type

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Core;
+using Nop.Core.Configuration;
 using Nop.Core.Domain;
 using Nop.Core.Domain.Blogs;
 using Nop.Core.Domain.Catalog;
@@ -47,6 +48,7 @@ namespace Nop.Web.Areas.Admin.Factories
     {
         #region Fields
 
+        private readonly AppSettings _appSettings;
         private readonly CurrencySettings _currencySettings;
         private readonly IAddressAttributeModelFactory _addressAttributeModelFactory;
         private readonly IAddressService _addressService;
@@ -55,7 +57,6 @@ namespace Nop.Web.Areas.Admin.Factories
         private readonly ICustomerAttributeModelFactory _customerAttributeModelFactory;
         private readonly INopDataProvider _dataProvider;
         private readonly IDateTimeHelper _dateTimeHelper;
-        private readonly IFulltextService _fulltextService;
         private readonly IGdprService _gdprService;
         private readonly ILocalizedModelFactory _localizedModelFactory;
         private readonly IGenericAttributeService _genericAttributeService;
@@ -74,7 +75,8 @@ namespace Nop.Web.Areas.Admin.Factories
 
         #region Ctor
 
-        public SettingModelFactory(CurrencySettings currencySettings,
+        public SettingModelFactory(AppSettings appSettings,
+            CurrencySettings currencySettings,
             IAddressAttributeModelFactory addressAttributeModelFactory,
             IAddressService addressService,
             IBaseAdminModelFactory baseAdminModelFactory,
@@ -82,7 +84,6 @@ namespace Nop.Web.Areas.Admin.Factories
             ICustomerAttributeModelFactory customerAttributeModelFactory,
             INopDataProvider dataProvider,
             IDateTimeHelper dateTimeHelper,
-            IFulltextService fulltextService,
             IGdprService gdprService,
             ILocalizedModelFactory localizedModelFactory,
             IGenericAttributeService genericAttributeService,
@@ -97,6 +98,7 @@ namespace Nop.Web.Areas.Admin.Factories
             IReviewTypeModelFactory reviewTypeModelFactory,
             IWorkContext workContext)
         {
+            _appSettings = appSettings;
             _currencySettings = currencySettings;
             _addressAttributeModelFactory = addressAttributeModelFactory;
             _addressService = addressService;
@@ -105,7 +107,6 @@ namespace Nop.Web.Areas.Admin.Factories
             _customerAttributeModelFactory = customerAttributeModelFactory;
             _dataProvider = dataProvider;
             _dateTimeHelper = dateTimeHelper;
-            _fulltextService = fulltextService;
             _gdprService = gdprService;
             _localizedModelFactory = localizedModelFactory;
             _genericAttributeService = genericAttributeService;
@@ -236,12 +237,29 @@ namespace Nop.Web.Areas.Admin.Factories
         {
             //load settings for a chosen store scope
             var storeId = _storeContext.ActiveStoreScopeConfiguration;
-            var customerSettings = _settingService.LoadSetting<CustomerSettings>(storeId);
+            var customerSettings = _settingService.LoadSetting<CustomerSettings>(storeId);            
 
             //fill in model values from the entity
-            var model = customerSettings.ToSettingsModel<CustomerSettingsModel>();
+            var model = customerSettings.ToSettingsModel<CustomerSettingsModel>();            
 
             return model;
+        }
+
+        /// <summary>
+        /// Prepare multi-factor authentication settings model
+        /// </summary>
+        /// <returns>MultiFactorAuthenticationSettingsModel</returns>
+        protected virtual MultiFactorAuthenticationSettingsModel PrepareMultiFactorAuthenticationSettingsModel()
+        {
+            //load settings for a chosen store scope
+            var storeId = _storeContext.ActiveStoreScopeConfiguration;
+            var multiFactorAuthenticationSettings = _settingService.LoadSetting<MultiFactorAuthenticationSettings>(storeId);
+
+            //fill in model values from the entity
+            var model = multiFactorAuthenticationSettings.ToSettingsModel<MultiFactorAuthenticationSettingsModel>();
+
+            return model;
+
         }
 
         /// <summary>
@@ -581,30 +599,6 @@ namespace Nop.Web.Areas.Admin.Factories
         }
 
         /// <summary>
-        /// Prepare full-text settings model
-        /// </summary>
-        /// <returns>Full-text settings model</returns>
-        protected virtual FullTextSettingsModel PrepareFullTextSettingsModel()
-        {
-            //load settings for a chosen store scope
-            var storeId = _storeContext.ActiveStoreScopeConfiguration;
-            var commonSettings = _settingService.LoadSetting<CommonSettings>(storeId);
-
-            //fill in model values from the entity
-            var model = new FullTextSettingsModel
-            {
-                Enabled = commonSettings.UseFullTextSearch,
-                SearchMode = (int)commonSettings.FullTextMode
-            };
-
-            //fill in additional values (not existing in the entity)
-            model.Supported = _fulltextService.IsFullTextSupported();
-            model.SearchModeValues = commonSettings.FullTextMode.ToSelectList();
-
-            return model;
-        }
-
-        /// <summary>
         /// Prepare admin area settings model
         /// </summary>
         /// <returns>Admin area settings model</returns>
@@ -735,6 +729,26 @@ namespace Nop.Web.Areas.Admin.Factories
         #endregion
 
         #region Methods
+
+        /// <summary>
+        /// Prepare app settings model
+        /// </summary>
+        /// <returns>App settings model</returns>
+        public virtual AppSettingsModel PrepareAppSettingsModel()
+        {
+            var model = new AppSettingsModel
+            {
+                CacheConfigModel = _appSettings.CacheConfig.ToConfigModel<CacheConfigModel>(),
+                HostingConfigModel = _appSettings.HostingConfig.ToConfigModel<HostingConfigModel>(),
+                RedisConfigModel = _appSettings.RedisConfig.ToConfigModel<RedisConfigModel>(),
+                AzureBlobConfigModel = _appSettings.AzureBlobConfig.ToConfigModel<AzureBlobConfigModel>(),
+                InstallationConfigModel = _appSettings.InstallationConfig.ToConfigModel<InstallationConfigModel>(),
+                PluginConfigModel = _appSettings.PluginConfig.ToConfigModel<PluginConfigModel>(),
+                CommonConfigModel = _appSettings.CommonConfig.ToConfigModel<CommonConfigModel>()
+            };
+
+            return model;
+        }
 
         /// <summary>
         /// Prepare blog settings model
@@ -1042,6 +1056,7 @@ namespace Nop.Web.Areas.Admin.Factories
                 model.ShowShareButton_OverrideForStore = _settingService.SettingExists(catalogSettings, x => x.ShowShareButton, storeId);
                 model.PageShareCode_OverrideForStore = _settingService.SettingExists(catalogSettings, x => x.PageShareCode, storeId);
                 model.ProductReviewsMustBeApproved_OverrideForStore = _settingService.SettingExists(catalogSettings, x => x.ProductReviewsMustBeApproved, storeId);
+                model.OneReviewPerProductFromCustomer_OverrideForStore = _settingService.SettingExists(catalogSettings, x => x.OneReviewPerProductFromCustomer, storeId);
                 model.AllowAnonymousUsersToReviewProduct_OverrideForStore = _settingService.SettingExists(catalogSettings, x => x.AllowAnonymousUsersToReviewProduct, storeId);
                 model.ProductReviewPossibleOnlyAfterPurchasing_OverrideForStore = _settingService.SettingExists(catalogSettings, x => x.ProductReviewPossibleOnlyAfterPurchasing, storeId);
                 model.NotifyStoreOwnerAboutNewProductReviews_OverrideForStore = _settingService.SettingExists(catalogSettings, x => x.NotifyStoreOwnerAboutNewProductReviews, storeId);
@@ -1332,6 +1347,9 @@ namespace Nop.Web.Areas.Admin.Factories
             //prepare customer settings model
             model.CustomerSettings = PrepareCustomerSettingsModel();
 
+            //prepare multi-factor authentication settings model
+            model.MultiFactorAuthenticationSettings = PrepareMultiFactorAuthenticationSettingsModel();
+
             //prepare address settings model
             model.AddressSettings = PrepareAddressSettingsModel();
 
@@ -1478,9 +1496,6 @@ namespace Nop.Web.Areas.Admin.Factories
 
             //prepare PDF settings model
             model.LocalizationSettings = PrepareLocalizationSettingsModel();
-
-            //prepare full-text settings model
-            model.FullTextSettings = PrepareFullTextSettingsModel();
 
             //prepare admin area settings model
             model.AdminAreaSettings = PrepareAdminAreaSettingsModel();

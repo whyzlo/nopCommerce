@@ -1,15 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using LinqToDB;
 using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Domain.Catalog;
 using Nop.Data;
-using Nop.Services.Caching;
-using Nop.Services.Caching.Extensions;
 using Nop.Services.Customers;
-using Nop.Services.Events;
+using Nop.Services.Security;
 using Nop.Services.Seo;
+using Nop.Services.Stores;
 
 namespace Nop.Services.Catalog
 {
@@ -21,13 +21,13 @@ namespace Nop.Services.Catalog
         #region Fields
 
         private readonly CatalogSettings _catalogSettings;
-        private readonly ICacheKeyService _cacheKeyService;
+        private readonly IAclService _aclService;
         private readonly ICustomerService _customerService;
-        private readonly INopDataProvider _dataProvider;
-        private readonly IEventPublisher _eventPublisher;
+        private readonly IRepository<Product> _productRepository;
         private readonly IRepository<ProductProductTagMapping> _productProductTagMappingRepository;
         private readonly IRepository<ProductTag> _productTagRepository;
         private readonly IStaticCacheManager _staticCacheManager;
+        private readonly IStoreMappingService _storeMappingService;
         private readonly IUrlRecordService _urlRecordService;
         private readonly IWorkContext _workContext;
 
@@ -36,24 +36,24 @@ namespace Nop.Services.Catalog
         #region Ctor
 
         public ProductTagService(CatalogSettings catalogSettings,
-            ICacheKeyService cacheKeyService,
+            IAclService aclService,
             ICustomerService customerService,
-            INopDataProvider dataProvider,
-            IEventPublisher eventPublisher,
+            IRepository<Product> productRepository,
             IRepository<ProductProductTagMapping> productProductTagMappingRepository,
             IRepository<ProductTag> productTagRepository,
             IStaticCacheManager staticCacheManager,
+            IStoreMappingService storeMappingService,
             IUrlRecordService urlRecordService,
             IWorkContext workContext)
         {
             _catalogSettings = catalogSettings;
-            _cacheKeyService = cacheKeyService;
+            _aclService = aclService;
             _customerService = customerService;
-            _dataProvider = dataProvider;
-            _eventPublisher = eventPublisher;
+            _productRepository = productRepository;
             _productProductTagMappingRepository = productProductTagMappingRepository;
             _productTagRepository = productTagRepository;
             _staticCacheManager = staticCacheManager;
+            _storeMappingService = storeMappingService;
             _urlRecordService = urlRecordService;
             _workContext = workContext;
         }
@@ -67,17 +67,38 @@ namespace Nop.Services.Catalog
         /// </summary>
         /// <param name="productId">Product identifier</param>
         /// <param name="productTagId">Product tag identifier</param>
-        public virtual void DeleteProductProductTagMapping(int productId, int productTagId)
+        protected virtual void DeleteProductProductTagMapping(int productId, int productTagId)
         {
             var mappitngRecord = _productProductTagMappingRepository.Table.FirstOrDefault(pptm => pptm.ProductId == productId && pptm.ProductTagId == productTagId);
 
             if (mappitngRecord is null)
-                throw new Exception("Mppaing record not found");
+                throw new Exception("Mapping record not found");
 
             _productProductTagMappingRepository.Delete(mappitngRecord);
+        }
 
-            //event notification
-            _eventPublisher.EntityDeleted(mappitngRecord);
+        /// <summary>
+        /// Filter hidden entries according to constraints if any
+        /// </summary>
+        /// <param name="query">Query to filter</param>
+        /// <param name="storeId">A store identifier</param>
+        /// <param name="customerRoleIds">Identifiers of customer's roles</param>
+        /// <returns>Filtered query</returns>
+        protected virtual IQueryable<TEntity> FilterHiddenEntries<TEntity>(IQueryable<TEntity> query, int storeId, int[] customerRoleIds)
+            where TEntity : Product
+        {
+            //filter unpublished entries
+            query = query.Where(entry => entry.Published);
+
+            //apply store mapping constraints
+            if (!_catalogSettings.IgnoreStoreLimitations && _storeMappingService.IsEntityMappingExists<TEntity>(storeId))
+                query = query.Where(_storeMappingService.ApplyStoreMapping<TEntity>(storeId));
+
+            //apply ACL constraints
+            if (!_catalogSettings.IgnoreAcl && _aclService.IsEntityAclMappingExist<TEntity>(customerRoleIds))
+                query = query.Where(_aclService.ApplyAcl<TEntity>(customerRoleIds));
+
+            return query;
         }
 
         /// <summary>
@@ -86,51 +107,48 @@ namespace Nop.Services.Catalog
         /// <param name="storeId">Store identifier</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Dictionary of "product tag ID : product count"</returns>
-        private Dictionary<int, int> GetProductCount(int storeId, bool showHidden)
+        protected virtual Dictionary<int, int> GetProductCount(int storeId, bool showHidden)
         {
-            var allowedCustomerRolesIds = string.Empty;
-            if (!showHidden && !_catalogSettings.IgnoreAcl)
-            {
-                //Access control list. Allowed customer roles
-                //pass customer role identifiers as comma-delimited string
-                allowedCustomerRolesIds = string.Join(",", _customerService.GetCustomerRoleIds(_workContext.CurrentCustomer));
-            }
+            var customerRolesIds = _customerService.GetCustomerRoleIds(_workContext.CurrentCustomer);
 
-            var key = _cacheKeyService.PrepareKeyForDefaultCache(NopCatalogDefaults.ProductTagCountCacheKey, storeId, 
-                _customerService.GetCustomerRoleIds(_workContext.CurrentCustomer), 
-                showHidden);
-           
+            var key = _staticCacheManager.PrepareKeyForDefaultCache(NopCatalogDefaults.ProductTagCountCacheKey, storeId, customerRolesIds, showHidden);
+
             return _staticCacheManager.Get(key, () =>
             {
-                //prepare input parameters
-                var pStoreId = SqlParameterHelper.GetInt32Parameter("StoreId", storeId);
-                var pAllowedCustomerRoleIds = SqlParameterHelper.GetStringParameter("AllowedCustomerRoleIds", allowedCustomerRolesIds);
+                var query = _productProductTagMappingRepository.Table;
 
-                //invoke stored procedure
-                return _dataProvider.QueryProc<ProductTagWithCount>("ProductTagCountLoadAll",
-                        pStoreId,
-                        pAllowedCustomerRoleIds)
-                    .ToDictionary(item => item.ProductTagId, item => item.ProductCount);
+                if (!showHidden)
+                {
+                    var productsQuery = FilterHiddenEntries(_productRepository.Table,
+                        storeId, _customerService.GetCustomerRoleIds(_workContext.CurrentCustomer));
+                    query = query.Where(pc => productsQuery.Any(p => !p.Deleted && pc.ProductId == p.Id));
+                }
+
+                var pTagCount = from pt in _productTagRepository.Table
+                    join ptm in query on pt.Id equals ptm.ProductTagId into ptmDefaults
+                    from ptm in ptmDefaults.DefaultIfEmpty()
+                    group pt by pt.Id into ptGrouped
+                    select new
+                    {
+                        ProductTagId = ptGrouped.Key,
+                        ProductCount = ptGrouped.Count()
+                    };
+
+                return pTagCount.ToDictionary(item => item.ProductTagId, item => item.ProductCount);
             });
         }
 
         #endregion
 
         #region Methods
-        
+
         /// <summary>
         /// Delete a product tag
         /// </summary>
         /// <param name="productTag">Product tag</param>
         public virtual void DeleteProductTag(ProductTag productTag)
         {
-            if (productTag == null)
-                throw new ArgumentNullException(nameof(productTag));
-
             _productTagRepository.Delete(productTag);
-            
-            //event notification
-            _eventPublisher.EntityDeleted(productTag);
         }
 
         /// <summary>
@@ -155,15 +173,11 @@ namespace Nop.Services.Catalog
         /// <returns>Product tags</returns>
         public virtual IList<ProductTag> GetAllProductTags(string tagName = null)
         {
-            var query = _productTagRepository.Table;
-            
-            var allProductTags = query.ToCachedList(_cacheKeyService.PrepareKeyForDefaultCache(NopCatalogDefaults.ProductTagAllCacheKey));
+            var allProductTags = _productTagRepository.GetAll(getCacheKey: cache => default);
 
-            if(!string.IsNullOrEmpty(tagName))
-            {
+            if (!string.IsNullOrEmpty(tagName))
                 allProductTags = allProductTags.Where(tag => tag.Name.Contains(tagName)).ToList();
-            }
-            
+
             return allProductTags;
         }
 
@@ -174,15 +188,14 @@ namespace Nop.Services.Catalog
         /// <returns>Product tags</returns>
         public virtual IList<ProductTag> GetAllProductTagsByProductId(int productId)
         {
-            var key = _cacheKeyService.PrepareKeyForDefaultCache(NopCatalogDefaults.ProductTagAllByProductIdCacheKey, productId);
-
-            var query = from pt in _productTagRepository.Table
-                join ppt in _productProductTagMappingRepository.Table on pt.Id equals ppt.ProductTagId
-                where ppt.ProductId == productId
-                orderby pt.Id
-                select pt;
-
-            var productTags = query.ToCachedList(key);
+            var productTags = _productTagRepository.GetAll(query =>
+            {
+                return from pt in query
+                    join ppt in _productProductTagMappingRepository.Table on pt.Id equals ppt.ProductTagId
+                    where ppt.ProductId == productId
+                    orderby pt.Id
+                    select pt;
+            }, cache => cache.PrepareKeyForDefaultCache(NopCatalogDefaults.ProductTagsByProductCacheKey, productId));
 
             return productTags;
         }
@@ -194,10 +207,7 @@ namespace Nop.Services.Catalog
         /// <returns>Product tag</returns>
         public virtual ProductTag GetProductTagById(int productTagId)
         {
-            if (productTagId == 0)
-                return null;
-
-            return _productTagRepository.ToCachedGetById(productTagId);
+            return _productTagRepository.GetById(productTagId, cache => default);
         }
 
         /// <summary>
@@ -207,14 +217,7 @@ namespace Nop.Services.Catalog
         /// <returns>Product tags</returns>
         public virtual IList<ProductTag> GetProductTagsByIds(int[] productTagIds)
         {
-            if (productTagIds == null || productTagIds.Length == 0)
-                return new List<ProductTag>();
-
-            var query = from p in _productTagRepository.Table
-                        where productTagIds.Contains(p.Id)
-                        select p;
-
-            return query.ToList();
+            return _productTagRepository.GetByIds(productTagIds);
         }
 
         /// <summary>
@@ -238,13 +241,7 @@ namespace Nop.Services.Catalog
         /// <param name="tagMapping">Product-product tag mapping</param>
         public virtual void InsertProductProductTagMapping(ProductProductTagMapping tagMapping)
         {
-            if (tagMapping is null)
-                throw new ArgumentNullException(nameof(tagMapping));
-
             _productProductTagMappingRepository.Insert(tagMapping);
-
-            //event notification
-            _eventPublisher.EntityInserted(tagMapping);
         }
 
         /// <summary>
@@ -253,13 +250,7 @@ namespace Nop.Services.Catalog
         /// <param name="productTag">Product tag</param>
         public virtual void InsertProductTag(ProductTag productTag)
         {
-            if (productTag == null)
-                throw new ArgumentNullException(nameof(productTag));
-
             _productTagRepository.Insert(productTag);
-            
-            //event notification
-            _eventPublisher.EntityInserted(productTag);
         }
 
         /// <summary>
@@ -289,9 +280,6 @@ namespace Nop.Services.Catalog
 
             var seName = _urlRecordService.ValidateSeName(productTag, string.Empty, productTag.Name, true);
             _urlRecordService.SaveSlug(productTag, seName, 0);
-            
-            //event notification
-            _eventPublisher.EntityUpdated(productTag);
         }
 
         /// <summary>
@@ -374,29 +362,7 @@ namespace Nop.Services.Catalog
             }
 
             //cache
-            _staticCacheManager.RemoveByPrefix(NopCatalogDefaults.ProductTagPrefixCacheKey);
-        }
-
-        #endregion
-
-        #region MyRegion
-
-        protected partial class ProductTagWithCount
-        {
-            /// <summary>
-            /// Gets or sets the entity identifier
-            /// </summary>
-            public int Id { get; set; }
-
-            /// <summary>
-            /// Gets or sets the product tag ID
-            /// </summary>
-            public int ProductTagId { get; set; }
-
-            /// <summary>
-            /// Gets or sets the count
-            /// </summary>
-            public int ProductCount { get; set; }
+            _staticCacheManager.RemoveByPrefix(NopEntityCacheDefaults<ProductTag>.Prefix);
         }
 
         #endregion

@@ -17,7 +17,6 @@ using Nop.Core.Domain.Shipping;
 using Nop.Core.Domain.Tax;
 using Nop.Core.Domain.Vendors;
 using Nop.Core.Http.Extensions;
-using Nop.Services.Caching;
 using Nop.Services.Catalog;
 using Nop.Services.Common;
 using Nop.Services.Customers;
@@ -54,7 +53,6 @@ namespace Nop.Web.Factories
         private readonly CommonSettings _commonSettings;
         private readonly CustomerSettings _customerSettings;
         private readonly IAddressModelFactory _addressModelFactory;
-        private readonly ICacheKeyService _cacheKeyService;
         private readonly ICheckoutAttributeFormatter _checkoutAttributeFormatter;
         private readonly ICheckoutAttributeParser _checkoutAttributeParser;
         private readonly ICheckoutAttributeService _checkoutAttributeService;
@@ -106,7 +104,6 @@ namespace Nop.Web.Factories
             CommonSettings commonSettings,
             CustomerSettings customerSettings,
             IAddressModelFactory addressModelFactory,
-            ICacheKeyService cacheKeyService,
             ICheckoutAttributeFormatter checkoutAttributeFormatter,
             ICheckoutAttributeParser checkoutAttributeParser,
             ICheckoutAttributeService checkoutAttributeService,
@@ -154,7 +151,6 @@ namespace Nop.Web.Factories
             _commonSettings = commonSettings;
             _customerSettings = customerSettings;
             _addressModelFactory = addressModelFactory;
-            _cacheKeyService = cacheKeyService;
             _checkoutAttributeFormatter = checkoutAttributeFormatter;
             _checkoutAttributeParser = checkoutAttributeParser;
             _checkoutAttributeService = checkoutAttributeService;
@@ -730,6 +726,7 @@ namespace Nop.Web.Factories
 
             var model = new EstimateShippingModel
             {
+                RequestDelay = _shippingSettings.RequestDelay,
                 Enabled = cart.Any() && _shoppingCartService.ShoppingCartRequiresShipping(cart)
             };
             if (model.Enabled)
@@ -804,7 +801,7 @@ namespace Nop.Web.Factories
         /// <returns>Picture model</returns>
         public virtual PictureModel PrepareCartItemPictureModel(ShoppingCartItem sci, int pictureSize, bool showDefaultPicture, string productName)
         {
-            var pictureCacheKey = _cacheKeyService.PrepareKeyForShortTermCache(NopModelCacheDefaults.CartPictureModelKey
+            var pictureCacheKey = _staticCacheManager.PrepareKeyForShortTermCache(NopModelCacheDefaults.CartPictureModelKey
                 , sci, pictureSize, true, _workContext.WorkingLanguage, _webHelper.IsCurrentConnectionSecured(), _storeContext.CurrentStore);
             
             var model = _staticCacheManager.Get(pictureCacheKey, () =>
@@ -1294,9 +1291,11 @@ namespace Nop.Web.Factories
                             });
                         }
                     }
-                    else
-                        foreach (var error in getShippingOptionResponse.Errors)
-                            model.Warnings.Add(error);
+                }
+                else
+                {
+                    foreach (var error in getShippingOptionResponse.Errors)
+                        model.Errors.Add(error);
                 }
 
                 var pickupPointsNumber = 0;
@@ -1322,8 +1321,10 @@ namespace Nop.Web.Factories
                         }
                     }
                     else
+                    {
                         foreach (var error in pickupPointsResponse.Errors)
-                            model.Warnings.Add(error);
+                            model.Errors.Add(error);
+                    }
                 }
 
                 ShippingOption selectedShippingOption = null;

@@ -1,9 +1,9 @@
 ﻿namespace Nop.Data.Migrations
 {
     /// <summary>
-    /// Represents a migration type
+    /// Represents an update migration type
     /// </summary>
-    public enum MigrationType
+    public enum UpdateMigrationType
     {
         /// <summary>
         /// Database data
@@ -18,6 +18,6 @@
         /// <summary>
         /// Setting
         /// </summary>
-        Setting = 15
+        Settings = 15
     }
 }

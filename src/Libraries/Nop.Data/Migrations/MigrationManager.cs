@@ -32,7 +32,7 @@ namespace Nop.Data.Migrations
         private readonly IMigrationRunnerConventions _migrationRunnerConventions;
         private readonly IMigrationContext _migrationContext;
         private readonly ITypeFinder _typeFinder;
-        private readonly IVersionLoader _versionLoader;
+        private readonly Lazy<IVersionLoader> _versionLoader;
 
         #endregion
 
@@ -43,10 +43,11 @@ namespace Nop.Data.Migrations
             IMigrationRunner migrationRunner,
             IMigrationRunnerConventions migrationRunnerConventions,
             IMigrationContext migrationContext,
-            ITypeFinder typeFinder,
-            IVersionLoader versionLoader)
+            ITypeFinder typeFinder)
         {
-            _typeMapping = new Dictionary<Type, Action<ICreateTableColumnAsTypeSyntax>>()
+            _versionLoader = new Lazy<IVersionLoader>(() => EngineContext.Current.Resolve<IVersionLoader>());
+            
+            _typeMapping = new Dictionary<Type, Action<ICreateTableColumnAsTypeSyntax>>
             {
                 [typeof(int)] = c => c.AsInt32(),
                 [typeof(long)] = c => c.AsInt64(),
@@ -63,7 +64,6 @@ namespace Nop.Data.Migrations
             _migrationRunnerConventions = migrationRunnerConventions;
             _migrationContext = migrationContext;
             _typeFinder = typeFinder;
-            _versionLoader = versionLoader;
         }
 
         #endregion
@@ -171,39 +171,37 @@ namespace Nop.Data.Migrations
         /// <summary>
         /// Executes all found (and unapplied) migrations
         /// </summary>
-        /// <param name="assembly">Assembly to find the migration;
-        /// leave null to search migration on the whole application pull</param>
+        /// <param name="assembly">Assembly to find the migration</param>
         /// <param name="isUpdateProcess">Indicates whether the upgrade or installation process is ongoing. True - if an upgrade process</param>
-        public void ApplyUpMigrations(Assembly assembly = null, bool isUpdateProcess = false)
+        public void ApplyUpMigrations(Assembly assembly, bool isUpdateProcess = false)
         {
+            if(assembly is null)
+                throw new ArgumentNullException(nameof(assembly));
+
             var migrations = GetMigrations(assembly);
 
-            foreach (var migrationInfo in migrations)
+            bool needToExecute(IMigrationInfo migrationInfo1)
             {
-                if (migrationInfo.Migration.GetType().GetCustomAttributes(typeof(SkipMigrationAttribute)).Any())
-                    continue;
+                var skip = migrationInfo1.Migration.GetType().GetCustomAttributes(typeof(SkipMigrationAttribute)).Any() || isUpdateProcess && migrationInfo1.Migration.GetType()
+                    .GetCustomAttributes(typeof(SkipMigrationOnUpdateAttribute)).Any() || !isUpdateProcess && migrationInfo1.Migration.GetType()
+                    .GetCustomAttributes(typeof(SkipMigrationOnInstallAttribute)).Any();
 
-                if (isUpdateProcess && migrationInfo.Migration.GetType().GetCustomAttributes(typeof(SkipMigrationOnUpdateAttribute)).Any())
-                    continue;
-
-                try
-                {
-                    _migrationRunner.MigrateUp(migrationInfo.Version);
-                }
-                catch (PreventFixMigrationException)
-                {
-                   //ignore
-                }
+                return !skip;
             }
+
+            foreach (var migrationInfo in migrations.Where(needToExecute))
+                    _migrationRunner.MigrateUp(migrationInfo.Version);
         }
 
         /// <summary>
         /// Executes all found (and unapplied) migrations
         /// </summary>
-        /// <param name="assembly">Assembly to find the migration;
-        /// leave null to search migration on the whole application pull</param>
-        public void ApplyDownMigrations(Assembly assembly = null)
+        /// <param name="assembly">Assembly to find the migration</param>
+        public void ApplyDownMigrations(Assembly assembly)
         {
+            if(assembly is null)
+                throw new ArgumentNullException(nameof(assembly));
+
             var migrations = GetMigrations(assembly).Reverse();
 
             foreach (var migrationInfo in migrations)
@@ -212,7 +210,7 @@ namespace Nop.Data.Migrations
                     continue;
 
                 _migrationRunner.Down(migrationInfo.Migration);
-                _versionLoader.DeleteVersion(migrationInfo.Version);
+                _versionLoader.Value.DeleteVersion(migrationInfo.Version);
             }
         }
 

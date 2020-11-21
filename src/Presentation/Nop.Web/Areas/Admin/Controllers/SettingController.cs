@@ -26,6 +26,7 @@ using Nop.Core.Domain.Tax;
 using Nop.Core.Domain.Vendors;
 using Nop.Core.Infrastructure;
 using Nop.Data;
+using Nop.Services.Authentication.MultiFactor;
 using Nop.Services.Common;
 using Nop.Services.Configuration;
 using Nop.Services.Customers;
@@ -55,16 +56,17 @@ namespace Nop.Web.Areas.Admin.Controllers
     {
         #region Fields
 
+        private readonly AppSettings _appSettings;
         private readonly IAddressService _addressService;
         private readonly ICustomerActivityService _customerActivityService;
         private readonly ICustomerService _customerService;
         private readonly INopDataProvider _dataProvider;
         private readonly IEncryptionService _encryptionService;
-        private readonly IFulltextService _fulltextService;
         private readonly IGenericAttributeService _genericAttributeService;
         private readonly IGdprService _gdprService;
         private readonly ILocalizedEntityService _localizedEntityService;
         private readonly ILocalizationService _localizationService;
+        private readonly IMultiFactorAuthenticationPluginManager _multiFactorAuthenticationPluginManager;
         private readonly INopFileProvider _fileProvider;
         private readonly INotificationService _notificationService;
         private readonly IOrderService _orderService;
@@ -78,22 +80,22 @@ namespace Nop.Web.Areas.Admin.Controllers
         private readonly IStoreService _storeService;
         private readonly IWorkContext _workContext;
         private readonly IUploadService _uploadService;
-        private readonly NopConfig _config;
 
         #endregion
 
         #region Ctor
 
-        public SettingController(IAddressService addressService,
+        public SettingController(AppSettings appSettings,
+            IAddressService addressService,
             ICustomerActivityService customerActivityService,
             ICustomerService customerService,
             INopDataProvider dataProvider,
             IEncryptionService encryptionService,
-            IFulltextService fulltextService,
             IGenericAttributeService genericAttributeService,
             IGdprService gdprService,
             ILocalizedEntityService localizedEntityService,
             ILocalizationService localizationService,
+            IMultiFactorAuthenticationPluginManager multiFactorAuthenticationPluginManager,
             INopFileProvider fileProvider,
             INotificationService notificationService,
             IOrderService orderService,
@@ -106,19 +108,19 @@ namespace Nop.Web.Areas.Admin.Controllers
             IStoreContext storeContext,
             IStoreService storeService,
             IWorkContext workContext,
-            IUploadService uploadService,
-            NopConfig config)
+            IUploadService uploadService)
         {
+            _appSettings = appSettings;
             _addressService = addressService;
             _customerActivityService = customerActivityService;
             _customerService = customerService;
             _dataProvider = dataProvider;
             _encryptionService = encryptionService;
-            _fulltextService = fulltextService;
             _genericAttributeService = genericAttributeService;
             _gdprService = gdprService;
             _localizedEntityService = localizedEntityService;
             _localizationService = localizationService;
+            _multiFactorAuthenticationPluginManager = multiFactorAuthenticationPluginManager;
             _fileProvider = fileProvider;
             _notificationService = notificationService;
             _orderService = orderService;
@@ -132,7 +134,6 @@ namespace Nop.Web.Areas.Admin.Controllers
             _storeService = storeService;
             _workContext = workContext;
             _uploadService = uploadService;
-            _config = config;
         }
 
         #endregion
@@ -177,6 +178,41 @@ namespace Nop.Web.Areas.Admin.Controllers
                 return RedirectToAction("Index", "Home", new { area = AreaNames.Admin });
 
             return Redirect(returnUrl);
+        }
+
+        public virtual IActionResult AppSettings()
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageSettings))
+                return AccessDeniedView();
+
+            //prepare model
+            var model = _settingModelFactory.PrepareAppSettingsModel();
+
+            return View(model);
+        }
+
+        [HttpPost]
+        public virtual IActionResult AppSettings(AppSettingsModel model)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageSettings))
+                return AccessDeniedView();
+
+            var appSettings = _appSettings;
+            appSettings.CacheConfig = model.CacheConfigModel.ToConfig(appSettings.CacheConfig);
+            appSettings.HostingConfig = model.HostingConfigModel.ToConfig(appSettings.HostingConfig);
+            appSettings.RedisConfig = model.RedisConfigModel.ToConfig(appSettings.RedisConfig);
+            appSettings.AzureBlobConfig = model.AzureBlobConfigModel.ToConfig(appSettings.AzureBlobConfig);
+            appSettings.InstallationConfig = model.InstallationConfigModel.ToConfig(appSettings.InstallationConfig);
+            appSettings.PluginConfig = model.PluginConfigModel.ToConfig(appSettings.PluginConfig);
+            appSettings.CommonConfig = model.CommonConfigModel.ToConfig(appSettings.CommonConfig);
+            AppSettingsHelper.SaveAppSettings(appSettings, _fileProvider);
+
+            _customerActivityService.InsertActivity("EditSettings", _localizationService.GetResource("ActivityLog.EditSettings"));
+
+            _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Updated"));
+
+            var returnUrl = Url.Action("AppSettings", "Setting", new { area = AreaNames.Admin });
+            return View("RestartApplication", returnUrl);
         }
 
         public virtual IActionResult Blog()
@@ -583,6 +619,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             _settingService.SaveSettingOverridablePerStore(catalogSettings, x => x.ShowShareButton, model.ShowShareButton_OverrideForStore, storeScope, false);
             _settingService.SaveSettingOverridablePerStore(catalogSettings, x => x.PageShareCode, model.PageShareCode_OverrideForStore, storeScope, false);
             _settingService.SaveSettingOverridablePerStore(catalogSettings, x => x.ProductReviewsMustBeApproved, model.ProductReviewsMustBeApproved_OverrideForStore, storeScope, false);
+            _settingService.SaveSettingOverridablePerStore(catalogSettings, x => x.OneReviewPerProductFromCustomer, model.OneReviewPerProductFromCustomer, storeScope, false);
             _settingService.SaveSettingOverridablePerStore(catalogSettings, x => x.AllowAnonymousUsersToReviewProduct, model.AllowAnonymousUsersToReviewProduct_OverrideForStore, storeScope, false);
             _settingService.SaveSettingOverridablePerStore(catalogSettings, x => x.ProductReviewPossibleOnlyAfterPurchasing, model.ProductReviewPossibleOnlyAfterPurchasing_OverrideForStore, storeScope, false);
             _settingService.SaveSettingOverridablePerStore(catalogSettings, x => x.NotifyStoreOwnerAboutNewProductReviews, model.NotifyStoreOwnerAboutNewProductReviews_OverrideForStore, storeScope, false);
@@ -1012,7 +1049,8 @@ namespace Nop.Web.Areas.Admin.Controllers
             var addressSettings = _settingService.LoadSetting<AddressSettings>(storeScope);
             var dateTimeSettings = _settingService.LoadSetting<DateTimeSettings>(storeScope);
             var externalAuthenticationSettings = _settingService.LoadSetting<ExternalAuthenticationSettings>(storeScope);
-
+            var multiFactorAuthenticationSettings = _settingService.LoadSetting<MultiFactorAuthenticationSettings>(storeScope);
+           
             customerSettings = model.CustomerSettings.ToSettings(customerSettings);
 
             if (customerSettings.UsernameValidationEnabled && customerSettings.UsernameValidationUseRegex)
@@ -1062,6 +1100,9 @@ namespace Nop.Web.Areas.Admin.Controllers
 
             externalAuthenticationSettings.AllowCustomersToRemoveAssociations = model.ExternalAuthenticationSettings.AllowCustomersToRemoveAssociations;
             _settingService.SaveSetting(externalAuthenticationSettings);
+
+            multiFactorAuthenticationSettings = model.MultiFactorAuthenticationSettings.ToSettings(multiFactorAuthenticationSettings);
+            _settingService.SaveSetting(multiFactorAuthenticationSettings);
 
             //activity log
             _customerActivityService.InsertActivity("EditSettings", _localizationService.GetResource("ActivityLog.EditSettings"));
@@ -1455,11 +1496,6 @@ namespace Nop.Web.Areas.Admin.Controllers
             localizationSettings.LoadAllUrlRecordsOnStartup = model.LocalizationSettings.LoadAllUrlRecordsOnStartup;
             _settingService.SaveSetting(localizationSettings);
 
-            //full-text (not overridable)
-            commonSettings = _settingService.LoadSetting<CommonSettings>();
-            commonSettings.FullTextMode = (FulltextSearchMode)model.FullTextSettings.SearchMode;
-            _settingService.SaveSetting(commonSettings);
-
             //display default menu item
             var displayDefaultMenuItemSettings = _settingService.LoadSetting<DisplayDefaultMenuItemSettings>(storeScope);
 
@@ -1618,47 +1654,6 @@ namespace Nop.Web.Areas.Admin.Controllers
                 _settingService.SaveSetting(securitySettings);
 
                 _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Settings.GeneralCommon.EncryptionKey.Changed"));
-            }
-            catch (Exception exc)
-            {
-                _notificationService.ErrorNotification(exc);
-            }
-
-            return RedirectToAction("GeneralCommon");
-        }
-
-        [HttpPost, ActionName("GeneralCommon")]
-        [FormValueRequired("togglefulltext")]
-        public virtual IActionResult ToggleFullText(GeneralCommonSettingsModel model)
-        {
-            if (!_permissionService.Authorize(StandardPermissionProvider.ManageSettings))
-                return AccessDeniedView();
-
-            var storeScope = _storeContext.ActiveStoreScopeConfiguration;
-            var commonSettings = _settingService.LoadSetting<CommonSettings>(storeScope);
-            try
-            {
-                if (!_fulltextService.IsFullTextSupported())
-                    throw new NopException(_localizationService.GetResource("Admin.Configuration.Settings.GeneralCommon.FullTextSettings.NotSupported"));
-
-                if (commonSettings.UseFullTextSearch)
-                {
-                    _fulltextService.DisableFullText();
-
-                    commonSettings.UseFullTextSearch = false;
-                    _settingService.SaveSetting(commonSettings);
-
-                    _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Settings.GeneralCommon.FullTextSettings.Disabled"));
-                }
-                else
-                {
-                    _fulltextService.EnableFullText();
-
-                    commonSettings.UseFullTextSearch = true;
-                    _settingService.SaveSetting(commonSettings);
-
-                    _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Settings.GeneralCommon.FullTextSettings.Enabled"));
-                }
             }
             catch (Exception exc)
             {
@@ -1856,11 +1851,25 @@ namespace Nop.Web.Areas.Admin.Controllers
         public IActionResult RedisCacheHighTrafficWarning(bool loadAllLocaleRecordsOnStartup)
         {
             //LoadAllLocaleRecordsOnStartup is set and Redis cache is used, so display warning
-            if (_config.RedisEnabled && _config.UseRedisForCaching && loadAllLocaleRecordsOnStartup)
+            if (_appSettings.RedisConfig.Enabled && _appSettings.RedisConfig.UseCaching && loadAllLocaleRecordsOnStartup)
                 return Json(new
                 {
                     Result = _localizationService.GetResource(
                         "Admin.Configuration.Settings.GeneralCommon.LoadAllLocaleRecordsOnStartup.Warning")
+                });
+
+            return Json(new { Result = string.Empty });
+        }
+
+        //Action that displays a notification (warning) to the store owner about the absence of active authentication providers
+        public IActionResult ForceMultifactorAuthenticationWarning(bool forceMultifactorAuthentication)
+        {
+            //ForceMultifactorAuthentication is set and the store haven't active Authentication provider , so display warning
+            if (forceMultifactorAuthentication && !_multiFactorAuthenticationPluginManager.HasActivePlugins())
+                return Json(new
+                {
+                    Result = _localizationService.GetResource(
+                        "Admin.Configuration.Settings.CustomerUser.ForceMultifactorAuthentication.Warning")
                 });
 
             return Json(new { Result = string.Empty });
